@@ -32,3 +32,26 @@
 - `lib/constants/` — App-wide constants (UPPER_SNAKE_CASE exports).
 - Navigation items are defined ONLY in `lib/constants/navigation.ts`.
 - `components/shared/` — Reusable UI used across multiple pages (e.g., PagePlaceholder).
+- `types/` — Shared TypeScript types (the shape of our data).
+- `lib/services/` — Controller layer. The ONLY place that knows where data comes from.
+- `lib/mock/` — Mock data. Must always use `status: "MOCK"`.
+- `lib/formatters.ts` — Pure formatting functions (price, percent, time).
+- `components/market/` — Market-related UI (cards, badges, sparklines).
+
+## 6. Git Conventions
+- Branch: `main` is always working/deployable.
+- Commit messages follow Conventional Commits:
+  - `feat:` new feature — `feat: add currency pair cards`
+  - `fix:` bug fix — `fix: sidebar pill jumping on mobile`
+  - `refactor:` code change without behavior change
+  - `style:` formatting / UI-only tweaks
+  - `docs:` documentation (AGENT.md, README)
+  - `chore:` dependencies, config
+- NEVER commit `.env` files or API keys.
+
+## 7. Data Integrity Rules
+- Missing data is `null` — NEVER a guessed or default number.
+- Every price MUST carry `timestamp`, `source`, `delayMinutes`, and `status`.
+- The UI MUST display data status (Live / Delayed / Mock / Unavailable).
+- Components NEVER fetch data directly — always go through `lib/services/`.
+- Avoid `Math.random()` / `Date.now()` differences between server and client renders (hydration errors).
