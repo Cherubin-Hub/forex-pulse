@@ -7,10 +7,14 @@ import { useNow } from "@/hooks/useNow";
 import { getActiveNewsRisks, getAffectedInstruments, getEventTiming, getMsUntilEvent } from "@/lib/calendar";
 import { formatDuration } from "@/lib/formatters";
 import { cn } from "@/lib/utils";
+import { useSettings } from "@/hooks/useSettings";
+import { getNewsWindows } from "@/lib/settings";
 
 export function NewsRiskBanner({ events }: { events: EconomicEvent[] }) {
   const now = useNow();
-  const risks = now ? getActiveNewsRisks(events, now) : [];
+  const { settings, isLoaded } = useSettings();
+  const windows = getNewsWindows(settings);
+  const risks = now && isLoaded ? getActiveNewsRisks(events, now, windows) : [];
 
   return (
     <AnimatePresence>
@@ -24,7 +28,7 @@ export function NewsRiskBanner({ events }: { events: EconomicEvent[] }) {
         >
           <div className="space-y-2">
             {risks.map((event) => {
-              const isImminent = getEventTiming(event, now) === "IMMINENT";
+              const isImminent = getEventTiming(event, now, windows) === "IMMINENT";
               const affected = getAffectedInstruments(event.currency);
               const Icon = isImminent ? AlertTriangle : Activity;
 

@@ -1,3 +1,1 @@
-export const NEWS_RISK_WINDOW_MINUTES = 30;
-export const POST_RELEASE_WINDOW_MINUTES = 15;
 export const DASHBOARD_EVENT_LIMIT = 6;

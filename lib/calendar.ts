@@ -1,5 +1,4 @@
-import type { EconomicEvent, EventTiming } from "@/types/calendar";
-import { NEWS_RISK_WINDOW_MINUTES, POST_RELEASE_WINDOW_MINUTES } from "@/lib/constants/calendar";
+import type { EconomicEvent, EventTiming, NewsWindows } from "@/types/calendar";
 import { INSTRUMENTS } from "@/lib/constants/instruments";
 import { formatDayKeyPHT, formatDayLabelPHT } from "@/lib/formatters";
 
@@ -9,24 +8,28 @@ export function getMsUntilEvent(event: EconomicEvent, now: Date): number {
   return new Date(event.scheduledAt).getTime() - now.getTime();
 }
 
-export function getEventTiming(event: EconomicEvent, now: Date): EventTiming {
+export function getEventTiming(event: EconomicEvent, now: Date, windows: NewsWindows): EventTiming {
   const msUntil = getMsUntilEvent(event, now);
 
-  if (msUntil > NEWS_RISK_WINDOW_MINUTES * MINUTE_MS) return "UPCOMING";
+  if (msUntil > windows.preReleaseMinutes * MINUTE_MS) return "UPCOMING";
   if (msUntil > 0) return "IMMINENT";
-  if (-msUntil <= POST_RELEASE_WINDOW_MINUTES * MINUTE_MS) return "JUST_RELEASED";
+  if (-msUntil <= windows.postReleaseMinutes * MINUTE_MS) return "JUST_RELEASED";
   return "RELEASED";
 }
 
-export function getUpcomingEvents(events: EconomicEvent[], now: Date, limit: number): EconomicEvent[] {
-  return events.filter((event) => getEventTiming(event, now) !== "RELEASED").slice(0, limit);
+export function getUpcomingEvents(
+  events: EconomicEvent[],
+  now: Date,
+  limit: number,
+  windows: NewsWindows
+): EconomicEvent[] {
+  return events.filter((event) => getEventTiming(event, now, windows) !== "RELEASED").slice(0, limit);
 }
 
-/** High-impact events inside the risk window (before) or volatility window (after). */
-export function getActiveNewsRisks(events: EconomicEvent[], now: Date): EconomicEvent[] {
+export function getActiveNewsRisks(events: EconomicEvent[], now: Date, windows: NewsWindows): EconomicEvent[] {
   return events.filter((event) => {
     if (event.impact !== "HIGH") return false;
-    const timing = getEventTiming(event, now);
+    const timing = getEventTiming(event, now, windows);
     return timing === "IMMINENT" || timing === "JUST_RELEASED";
   });
 }

@@ -8,9 +8,11 @@ import { getActiveOverlap, getSessionStatus, isForexMarketOpen } from "@/lib/ses
 import { formatClockPHT } from "@/lib/formatters";
 import { SessionCard } from "@/components/sessions/SessionCard";
 import { cn } from "@/lib/utils";
+import { useSettings } from "@/hooks/useSettings";
 
 export function SessionBar() {
   const now = useNow();
+  const { settings } = useSettings();
 
   if (!now) {
     return <div className="h-[212px] animate-pulse rounded-xl border border-border bg-card" />;
@@ -66,7 +68,11 @@ export function SessionBar() {
       {/* Session cards */}
       <div className="grid gap-3 md:grid-cols-3">
         {statuses.map((status) => (
-          <SessionCard key={status.session.id} status={status} />
+          <SessionCard
+            key={status.session.id}
+            status={status}
+            isFocused={settings.sessionFocus.includes(status.session.id)}
+          />
         ))}
       </div>
     </motion.section>
