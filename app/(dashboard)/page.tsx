@@ -1,10 +1,13 @@
 import { INSTRUMENTS } from "@/lib/constants/instruments";
 import { getQuotes } from "@/lib/services/marketData";
+import { getEconomicEvents } from "@/lib/services/calendar";
 import { CurrencyCardGrid, type CurrencyCardItem } from "@/components/market/CurrencyCardGrid";
 import { SessionBar } from "@/components/sessions/SessionBar";
+import { NewsRiskBanner } from "@/components/calendar/NewsRiskBanner";
+import { UpcomingEventsPanel } from "@/components/calendar/UpcomingEventsPanel";
 
 export default async function DashboardPage() {
-  const quotes = await getQuotes();
+  const [quotes, events] = await Promise.all([getQuotes(), getEconomicEvents()]);
 
   const items: CurrencyCardItem[] = INSTRUMENTS.map((instrument) => ({
     instrument,
@@ -13,7 +16,10 @@ export default async function DashboardPage() {
 
   return (
     <div className="space-y-6">
+      <NewsRiskBanner events={events} />
+
       <SessionBar />
+
       <section>
         <div className="mb-4">
           <h2 className="text-base font-semibold tracking-tight">Market Overview</h2>
@@ -21,6 +27,8 @@ export default async function DashboardPage() {
         </div>
         <CurrencyCardGrid items={items} />
       </section>
+
+      <UpcomingEventsPanel events={events} />
     </div>
   );
 }

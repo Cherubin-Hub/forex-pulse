@@ -69,3 +69,28 @@ export function formatDuration(ms: number): string {
   if (hours > 0) return `${hours}h ${pad(minutes)}m ${pad(seconds)}s`;
   return `${minutes}m ${pad(seconds)}s`;
 }
+
+// "en-CA" formats dates as YYYY-MM-DD — perfect for grouping keys.
+const PHT_DAY_KEY_FORMATTER = new Intl.DateTimeFormat("en-CA", {
+  year: "numeric",
+  month: "2-digit",
+  day: "2-digit",
+  timeZone: "Asia/Manila",
+});
+
+const PHT_DAY_LABEL_FORMATTER = new Intl.DateTimeFormat("en-US", {
+  weekday: "long",
+  month: "short",
+  day: "numeric",
+  timeZone: "Asia/Manila",
+});
+
+/** "2026-10-09" */
+export function formatDayKeyPHT(value: string | Date): string {
+  return PHT_DAY_KEY_FORMATTER.format(new Date(value));
+}
+
+/** "Friday, Oct 9" */
+export function formatDayLabelPHT(value: string | Date): string {
+  return PHT_DAY_LABEL_FORMATTER.format(new Date(value));
+}
