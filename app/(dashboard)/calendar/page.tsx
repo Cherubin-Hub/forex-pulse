@@ -1,13 +1,18 @@
-import { CalendarDays } from "lucide-react";
-import { PagePlaceholder } from "@/components/shared/PagePlaceholder";
+import { getEconomicEvents } from "@/lib/services/calendar";
+import { CalendarWeekView } from "@/components/calendar/CalendarWeekView";
 
-export default function CalendarPage() {
+export default async function CalendarPage() {
+  const events = await getEconomicEvents();
+
   return (
-    <PagePlaceholder
-      icon={CalendarDays}
-      title="Economic Calendar"
-      description="High-impact events: NFP, CPI, FOMC and central bank decisions."
-      phase="Phase 1"
-    />
+    <div className="space-y-4">
+      <div>
+        <h2 className="text-base font-semibold tracking-tight">This Week</h2>
+        <p className="text-sm text-muted-foreground">
+          All times in PHT. Rows highlight red 30 min before high-impact releases.
+        </p>
+      </div>
+      <CalendarWeekView events={events} />
+    </div>
   );
 }
