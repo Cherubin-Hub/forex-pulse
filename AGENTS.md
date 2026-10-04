@@ -42,6 +42,9 @@
 - `lib/sessions.ts` — Time zone and session logic. Pure functions that take `now` as a parameter.
 - `components/calendar/` — Economic calendar and news-risk UI.
 - `lib/calendar.ts` — Event timing and grouping logic (pure functions, take `now`).
+- `lib/schemas/` — Zod schemas. Types are INFERRED from schemas (`z.infer`), never duplicated by hand.
+- `lib/storage/` — Persistence adapters (localStorage now, Supabase later). Only these files know where data is stored.
+- `components/settings/` — Settings UI.
 
 ## 6. Git Conventions
 - Branch: `main` is always working/deployable.
@@ -63,3 +66,18 @@
 - Economic event `actual` is `null` until released and verified.
 - Time-relative filtering (upcoming / released) happens on the CLIENT with `useNow`, never cached on the server.
 - Pass a single `now` down as a prop to lists — do not call `useNow()` per row.
+
+## 8. Time & Time Zone Rules
+- NEVER hard-code PHT session times. Define sessions in their LOCAL market time zone (IANA names) and convert.
+- All time logic functions accept `now: Date` as a parameter (testable, no hidden clock reads).
+- Time-dependent UI must render after mount (`useNow` returns null first) to avoid hydration errors.
+- Display times to the user in PHT (`Asia/Manila`) until user time zone settings exist.
+
+## 9. Forms & State Rules
+- Forms use React Hook Form + Zod (`zodResolver`). Validation messages live in the schema.
+- Native inputs use `register`; custom inputs use `Controller`.
+- Buttons inside forms that are NOT submit buttons MUST have `type="button"`.
+- Global user preferences come from `useSettings()` — never read localStorage directly in components.
+- Data loaded from storage is ALWAYS re-validated with the schema (`safeParse`) before use.
+- Hooks are always called before any early `return`.
+- Store only true UI state in `useState`; compute derived values during render.

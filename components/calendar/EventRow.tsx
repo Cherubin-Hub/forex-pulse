@@ -5,6 +5,8 @@ import { getAffectedInstruments, getEventTiming, getMsUntilEvent } from "@/lib/c
 import { formatClockPHT, formatDuration } from "@/lib/formatters";
 import { ImpactBadge } from "@/components/calendar/ImpactBadge";
 import { cn } from "@/lib/utils";
+import { useSettings } from "@/hooks/useSettings";
+import { getNewsWindows } from "@/lib/settings";
 
 type EventRowProps = {
   event: EconomicEvent;
@@ -13,7 +15,8 @@ type EventRowProps = {
 };
 
 export function EventRow({ event, now, showAffected = false }: EventRowProps) {
-  const timing = getEventTiming(event, now);
+  const { settings } = useSettings();
+  const timing = getEventTiming(event, now, getNewsWindows(settings));
   const msUntil = getMsUntilEvent(event, now);
   const affected = showAffected ? getAffectedInstruments(event.currency) : [];
 
