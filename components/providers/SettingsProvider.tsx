@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
+import { createContext, useContext, useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 import type { UserSettings } from "@/lib/schemas/settings";
 import { DEFAULT_SETTINGS } from "@/lib/constants/settings";
 import { clearSettings, loadSettings, saveSettings } from "@/lib/storage/settingsStorage";
@@ -40,4 +40,12 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
   );
 
   return <SettingsContext.Provider value={value}>{children}</SettingsContext.Provider>;
+}
+
+export function useSettings() {
+  const context = useContext(SettingsContext);
+  if (!context) {
+    throw new Error("useSettings must be used within a SettingsProvider");
+  }
+  return context;
 }
