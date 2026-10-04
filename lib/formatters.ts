@@ -31,12 +31,41 @@ export function formatPercent(value: number): string {
 }
 
 const PHT_TIME_FORMATTER = new Intl.DateTimeFormat("en-US", {
-  hour: "2-digit",
+  hour: "numeric",
   minute: "2-digit",
   hour12: true,
   timeZone: "Asia/Manila",
 });
 
-export function formatTimePHT(isoString: string): string {
-  return `${PHT_TIME_FORMATTER.format(new Date(isoString))} PHT`;
+const PHT_CLOCK_FORMATTER = new Intl.DateTimeFormat("en-US", {
+  hour: "numeric",
+  minute: "2-digit",
+  second: "2-digit",
+  hour12: true,
+  timeZone: "Asia/Manila",
+});
+
+/** "3:00 PM" — no suffix, for compact ranges */
+export function formatClockPHT(value: string | Date, withSeconds = false): string {
+  const formatter = withSeconds ? PHT_CLOCK_FORMATTER : PHT_TIME_FORMATTER;
+  return formatter.format(new Date(value));
+}
+
+/** "3:00 PM PHT" */
+export function formatTimePHT(value: string | Date): string {
+  return `${formatClockPHT(value)} PHT`;
+}
+
+/** 93784000 -> "1d 2h 03m" · 7384000 -> "2h 03m 04s" · 184000 -> "3m 04s" */
+export function formatDuration(ms: number): string {
+  const totalSeconds = Math.max(0, Math.floor(ms / 1000));
+  const days = Math.floor(totalSeconds / 86400);
+  const hours = Math.floor((totalSeconds % 86400) / 3600);
+  const minutes = Math.floor((totalSeconds % 3600) / 60);
+  const seconds = totalSeconds % 60;
+  const pad = (n: number) => String(n).padStart(2, "0");
+
+  if (days > 0) return `${days}d ${hours}h ${pad(minutes)}m`;
+  if (hours > 0) return `${hours}h ${pad(minutes)}m ${pad(seconds)}s`;
+  return `${minutes}m ${pad(seconds)}s`;
 }

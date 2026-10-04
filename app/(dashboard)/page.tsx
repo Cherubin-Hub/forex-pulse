@@ -1,6 +1,7 @@
 import { INSTRUMENTS } from "@/lib/constants/instruments";
 import { getQuotes } from "@/lib/services/marketData";
 import { CurrencyCardGrid, type CurrencyCardItem } from "@/components/market/CurrencyCardGrid";
+import { SessionBar } from "@/components/sessions/SessionBar";
 
 export default async function DashboardPage() {
   const quotes = await getQuotes();
@@ -12,6 +13,7 @@ export default async function DashboardPage() {
 
   return (
     <div className="space-y-6">
+      <SessionBar />
       <section>
         <div className="mb-4">
           <h2 className="text-base font-semibold tracking-tight">Market Overview</h2>
