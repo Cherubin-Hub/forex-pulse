@@ -21,3 +21,7 @@ export type EventTiming =
   | "JUST_RELEASED"  // released less than 15 min ago — volatility window
   | "RELEASED";      // older
   
+export type NewsWindows = {
+  preReleaseMinutes: number;
+  postReleaseMinutes: number;
+};

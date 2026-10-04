@@ -8,9 +8,13 @@ import { useNow } from "@/hooks/useNow";
 import { getUpcomingEvents } from "@/lib/calendar";
 import { DASHBOARD_EVENT_LIMIT } from "@/lib/constants/calendar";
 import { EventRow } from "@/components/calendar/EventRow";
+import { getNewsWindows } from "@/lib/settings";
+import { useSettings } from "@/hooks/useSettings";
 
 export function UpcomingEventsPanel({ events }: { events: EconomicEvent[] }) {
   const now = useNow();
+  const { settings } = useSettings();
+  const windows = getNewsWindows(settings);
 
   return (
     <section className="rounded-xl border border-border bg-card p-5 text-card-foreground shadow-sm">
@@ -34,7 +38,7 @@ export function UpcomingEventsPanel({ events }: { events: EconomicEvent[] }) {
           ))}
         </div>
       ) : (
-        <UpcomingList events={getUpcomingEvents(events, now, DASHBOARD_EVENT_LIMIT)} now={now} />
+        <UpcomingList events={getUpcomingEvents(events, now, DASHBOARD_EVENT_LIMIT, windows)} now={now} />
       )}
     </section>
   );

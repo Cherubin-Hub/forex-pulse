@@ -4,8 +4,9 @@ import { motion } from "framer-motion";
 import type { SessionStatus } from "@/types/session";
 import { formatClockPHT, formatDuration } from "@/lib/formatters";
 import { cn } from "@/lib/utils";
+import { Star } from "lucide-react";
 
-export function SessionCard({ status }: { status: SessionStatus }) {
+export function SessionCard({ status, isFocused }: { status: SessionStatus; isFocused: boolean }) {
   const { session, isOpen, opensAt, closesAt, progress, msUntilChange } = status;
 
   return (
@@ -17,7 +18,12 @@ export function SessionCard({ status }: { status: SessionStatus }) {
     >
       <div className="flex items-center justify-between">
         <div>
-          <p className="text-sm font-semibold">{session.name}</p>
+          <p className="flex items-center gap-1.5 text-sm font-semibold">
+            {session.name}
+            {isFocused && (
+              <Star className="h-3.5 w-3.5 fill-amber-400 text-amber-400" aria-label="Your session" />
+            )}
+          </p>
           <p className="text-xs text-muted-foreground">{session.city}</p>
         </div>
 
