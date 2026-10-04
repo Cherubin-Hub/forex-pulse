@@ -1,83 +1,70 @@
-# ForexPulse Engineering Standards
+# Forex Pulse - AI Agent Rulebook & Architecture Guide
 
-## 1. Tech Stack
-- Framework: Next.js (App Router)
-- Language: TypeScript
-- Styling: Tailwind CSS
-- UI Components: shadcn/ui
-- Animations: Framer Motion
-- Database & Auth: Supabase
+## 🎯 Project Overview
+**Forex Pulse** is a personal, high-performance Forex Intelligence Dashboard designed for strict risk management and macroeconomic tracking. It acts as a digital disciplinarian and analysis hub.
 
-## 2. Naming Conventions
-- **Folders:** Always `kebab-case` (e.g., `components/ui`, `app/market-overview`).
-- **React Components:** Always `PascalCase` (e.g., `Sidebar.tsx`, `CurrencyCard.tsx`).
-- **Utility Functions/Hooks:** Always `camelCase` (e.g., `useMarketData.ts`, `formatPrice.ts`).
-- **Constants/Enums:** Always `UPPER_SNAKE_CASE` (e.g., `MAX_RISK_PERCENT`, `SESSION_TIMES`).
+## 🛠 Tech Stack
+- **Framework:** Next.js (App Router)
+- **Language:** TypeScript
+- **Styling:** Tailwind CSS + shadcn/ui
+- **Animations:** Framer Motion
+- **Validation:** Zod + React Hook Form
+- **Database / Auth (Future):** Supabase (PostgreSQL)
 
-## 3. UI / UX Rules
-- **Themes:** Every component MUST support Light and Dark mode using Tailwind's `dark:` modifier.
-- **Animations:** Use `framer-motion` for page transitions, modal popups, and layout changes. Keep animations subtle (duration: 0.2s - 0.4s).
-- **Layout:** The application uses a Universal Sidebar and Header layout. Main content is rendered inside the `<main>` tag next to the sidebar.
+## 🏗 Architectural Rules (MVC Monolith)
+We strictly separate data models, UI, and business logic to ensure an easy transition from mock data to a real backend.
+1. **Model (Types/Schemas):** 
+   - All TypeScript interfaces live in `/types/`. 
+   - All Zod validation schemas live in `/lib/schemas/`.
+2. **View (UI/Pages):** 
+   - Pages live in `/app/(dashboard)/`.
+   - UI blocks live in `/components/`.
+   - Favor Server Components by default. Use `"use client"` *only* when hooks, interactivity, or Framer Motion animations are required.
+3. **Controller (Services/Mock):** 
+   - Components MUST NOT fetch or shape data directly. 
+   - Components call asynchronous controllers in `/lib/services/` (e.g., `getQuotes()`).
+   - Controllers currently return data from `/lib/mock/`. Later, they will query Supabase or external APIs.
 
-## 4. Architecture (MVC)
-- **Model:** Handled by Supabase and defined in database schemas.
-- **View:** React Server Components (where possible) and Client Components (for interactivity) in the `app/` and `components/` folders.
-- **Controller:** Next.js Route Handlers (`app/api/`) and Server Actions. Data fetching should happen on the server before reaching the client.
+## 🧩 Established Coding Patterns
+1. **Strict Hydration Safety:** 
+   - When using browser APIs (like `localStorage` or native system clocks), the initial server render must match the first client render.
+   - Use the `useEffect` sync pattern and safely bypass the ESLint rule with `// eslint-disable-next-line react-hooks/set-state-in-effect -- Hydration match pattern`.
+2. **Centralized Formatting:** 
+   - Never format prices, times, or percentages inline.
+   - Always use the dedicated helper functions in `/lib/formatters.ts` (e.g., `formatPrice()`, `calculateChange()`, `formatTimePHT()`).
+3. **Relative Time Formatting:**
+   - Avoid bloated external date libraries (like `date-fns` or `moment`) where possible. Use native `Intl` APIs or simple math helpers.
+4. **Visual Hierarchy:**
+   - Color code strict risk rules and impact data (Red = High Impact/Loss, Green = Won, Amber = Medium Impact/Warning).
 
-## 5. Folder Structure
-- `app/(dashboard)/` — All authenticated pages. Inherit Sidebar + Header.
-- `components/layout/` — App shell components (Sidebar, Header, ThemeToggle).
-- `components/providers/` — React context providers.
-- `components/ui/` — shadcn generated components. Do not edit unless necessary.
-- `lib/constants/` — App-wide constants (UPPER_SNAKE_CASE exports).
-- Navigation items are defined ONLY in `lib/constants/navigation.ts`.
-- `components/shared/` — Reusable UI used across multiple pages (e.g., PagePlaceholder).
-- `types/` — Shared TypeScript types (the shape of our data).
-- `lib/services/` — Controller layer. The ONLY place that knows where data comes from.
-- `lib/mock/` — Mock data. Must always use `status: "MOCK"`.
-- `lib/formatters.ts` — Pure formatting functions (price, percent, time).
-- `components/market/` — Market-related UI (cards, badges, sparklines).
-- `hooks/` — Custom React hooks (camelCase, must start with `use`).
-- `components/sessions/` — Market session UI.
-- `lib/sessions.ts` — Time zone and session logic. Pure functions that take `now` as a parameter.
-- `components/calendar/` — Economic calendar and news-risk UI.
-- `lib/calendar.ts` — Event timing and grouping logic (pure functions, take `now`).
-- `lib/schemas/` — Zod schemas. Types are INFERRED from schemas (`z.infer`), never duplicated by hand.
-- `lib/storage/` — Persistence adapters (localStorage now, Supabase later). Only these files know where data is stored.
-- `components/settings/` — Settings UI.
+## 🤖 AI Assistant Directives (CRITICAL)
+- **NO DIRECT CODE GENERATION:** The AI must NEVER overwrite or create files directly using tools.
+- **MANUAL CODING:** The AI must provide exact, copy-pasteable code blocks for the user to implement manually.
+- **EXPLANATIONS REQUIRED:** Every code block must be accompanied by a clear explanation of *why* it was written that way.
+- **STRICT TYPES:** Never use `any`. Always rely on defined TypeScript types.
 
-## 6. Git Conventions
-- Branch: `main` is always working/deployable.
-- Commit messages follow Conventional Commits:
-  - `feat:` new feature — `feat: add currency pair cards`
-  - `fix:` bug fix — `fix: sidebar pill jumping on mobile`
-  - `refactor:` code change without behavior change
-  - `style:` formatting / UI-only tweaks
-  - `docs:` documentation (AGENT.md, README)
-  - `chore:` dependencies, config
-- NEVER commit `.env` files or API keys.
+---
 
-## 7. Data Integrity Rules
-- Missing data is `null` — NEVER a guessed or default number.
-- Every price MUST carry `timestamp`, `source`, `delayMinutes`, and `status`.
-- The UI MUST display data status (Live / Delayed / Mock / Unavailable).
-- Components NEVER fetch data directly — always go through `lib/services/`.
-- Avoid `Math.random()` / `Date.now()` differences between server and client renders (hydration errors).
-- Economic event `actual` is `null` until released and verified.
-- Time-relative filtering (upcoming / released) happens on the CLIENT with `useNow`, never cached on the server.
-- Pass a single `now` down as a prop to lists — do not call `useNow()` per row.
+## 🗺 Roadmap & Progress
 
-## 8. Time & Time Zone Rules
-- NEVER hard-code PHT session times. Define sessions in their LOCAL market time zone (IANA names) and convert.
-- All time logic functions accept `now: Date` as a parameter (testable, no hidden clock reads).
-- Time-dependent UI must render after mount (`useNow` returns null first) to avoid hydration errors.
-- Display times to the user in PHT (`Asia/Manila`) until user time zone settings exist.
+### ✅ Phase 1: Core Shell & Macro Data (COMPLETED)
+- [x] Next.js initialization & shadcn/ui setup.
+- [x] Universal App Layout (Sidebar, Header, Mobile Navigation).
+- [x] Theme Toggle (Dark/Light).
+- [x] Market Session Bar (DST-aware, PHT timezone, Hydration-safe).
+- [x] Economic Calendar (High impact filtering, News Risk Banner).
+- [x] Settings Module (React Hook Form, Zod validation, LocalStorage sync).
+- [x] Dashboard Overview (Currency Cards, Sparklines).
+- [x] Gold (XAU/USD) Analysis (Macro Drivers, Key Levels).
+- [x] Market News Module (Impact-coded feed).
 
-## 9. Forms & State Rules
-- Forms use React Hook Form + Zod (`zodResolver`). Validation messages live in the schema.
-- Native inputs use `register`; custom inputs use `Controller`.
-- Buttons inside forms that are NOT submit buttons MUST have `type="button"`.
-- Global user preferences come from `useSettings()` — never read localStorage directly in components.
-- Data loaded from storage is ALWAYS re-validated with the schema (`safeParse`) before use.
-- Hooks are always called before any early `return`.
-- Store only true UI state in `useState`; compute derived values during render.
+### 🚧 Phase 2: Technicals, Execution & Risk (UP NEXT)
+- [ ] **Risk Management (`/risk`):** Position size calculator based on strict account percentage risk.
+- [ ] **Trading Setups State Machine:** Finalizing the logic for `WAITING` -> `TRIGGERED` -> `TP/SL`.
+- [ ] **Technical Analysis (`/technical`):** Multi-timeframe trend dashboards (EMA, RSI, ATR).
+- [ ] **TradingView Integration:** Embedding interactive chart widgets on relevant pages.
+
+### 🔮 Phase 3: Analytics & Backend (FUTURE)
+- [ ] Setup History & Win-rate Analytics.
+- [ ] AI-generated Session Reports (`/reports`).
+- [ ] Supabase Integration (PostgreSQL + Auth).
