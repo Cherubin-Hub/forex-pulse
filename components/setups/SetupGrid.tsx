@@ -1,6 +1,5 @@
 "use client";
 
-import { motion } from "framer-motion";
 import { Target } from "lucide-react";
 import type { TradingSetup } from "@/types/setup";
 import { SetupCard } from "@/components/setups/SetupCard";

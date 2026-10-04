@@ -1,13 +1,13 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { ArrowDownRight, ArrowUpRight, CheckCircle2, Clock, XCircle, AlertCircle } from "lucide-react";
+import { ArrowDownRight, ArrowUpRight, CheckCircle2, Clock, XCircle, AlertCircle, Activity, type LucideIcon } from "lucide-react";
 import type { SetupStatus, TradingSetup } from "@/types/setup";
 import { INSTRUMENTS } from "@/lib/constants/instruments";
 import { formatPrice } from "@/lib/formatters";
 import { cn } from "@/lib/utils";
 
-const STATUS_CONFIG: Record<SetupStatus, { label: string; icon: any; color: string }> = {
+const STATUS_CONFIG: Record<SetupStatus, { label: string; icon: LucideIcon; color: string }> = {
   WAITING_FOR_CONFIRMATION: { label: "Waiting", icon: Clock, color: "text-amber-500 bg-amber-500/10" },
   ENTRY_TRIGGERED: { label: "Active", icon: Activity, color: "text-sky-500 bg-sky-500/10" },
   TP_REACHED: { label: "Won", icon: CheckCircle2, color: "text-emerald-500 bg-emerald-500/10" },
@@ -15,8 +15,6 @@ const STATUS_CONFIG: Record<SetupStatus, { label: string; icon: any; color: stri
   INVALIDATED: { label: "Invalidated", icon: AlertCircle, color: "text-slate-500 bg-slate-500/10" },
   EXPIRED: { label: "Expired", icon: Clock, color: "text-slate-500 bg-slate-500/10" },
 };
-// Quick placeholder for Activity since we didn't import it in this file
-import { Activity } from "lucide-react"; 
 
 export function SetupCard({ setup }: { setup: TradingSetup }) {
   const isLong = setup.direction === "LONG";
