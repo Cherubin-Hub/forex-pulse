@@ -37,6 +37,9 @@
 - `lib/mock/` — Mock data. Must always use `status: "MOCK"`.
 - `lib/formatters.ts` — Pure formatting functions (price, percent, time).
 - `components/market/` — Market-related UI (cards, badges, sparklines).
+- `hooks/` — Custom React hooks (camelCase, must start with `use`).
+- `components/sessions/` — Market session UI.
+- `lib/sessions.ts` — Time zone and session logic. Pure functions that take `now` as a parameter.
 
 ## 6. Git Conventions
 - Branch: `main` is always working/deployable.
