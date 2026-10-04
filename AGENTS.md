@@ -40,6 +40,8 @@
 - `hooks/` — Custom React hooks (camelCase, must start with `use`).
 - `components/sessions/` — Market session UI.
 - `lib/sessions.ts` — Time zone and session logic. Pure functions that take `now` as a parameter.
+- `components/calendar/` — Economic calendar and news-risk UI.
+- `lib/calendar.ts` — Event timing and grouping logic (pure functions, take `now`).
 
 ## 6. Git Conventions
 - Branch: `main` is always working/deployable.
@@ -58,3 +60,6 @@
 - The UI MUST display data status (Live / Delayed / Mock / Unavailable).
 - Components NEVER fetch data directly — always go through `lib/services/`.
 - Avoid `Math.random()` / `Date.now()` differences between server and client renders (hydration errors).
+- Economic event `actual` is `null` until released and verified.
+- Time-relative filtering (upcoming / released) happens on the CLIENT with `useNow`, never cached on the server.
+- Pass a single `now` down as a prop to lists — do not call `useNow()` per row.
