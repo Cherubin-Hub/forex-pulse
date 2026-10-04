@@ -1,13 +1,18 @@
-import { Target } from "lucide-react";
-import { PagePlaceholder } from "@/components/shared/PagePlaceholder";
+import { getActiveSetups } from "@/lib/services/setups";
+import { SetupGrid } from "@/components/setups/SetupGrid";
 
-export default function SetupsPage() {
+export default async function SetupsPage() {
+  const setups = await getActiveSetups();
+
   return (
-    <PagePlaceholder
-      icon={Target}
-      title="Trading Setups"
-      description="Active setups with entry, SL, TP and live status tracking."
-      phase="Phase 2"
-    />
+    <div className="space-y-6">
+      <div>
+        <h2 className="text-base font-semibold tracking-tight">Active Setups</h2>
+        <p className="text-sm text-muted-foreground">
+          Trades waiting for entry confirmation or currently active in the market.
+        </p>
+      </div>
+      <SetupGrid setups={setups} />
+    </div>
   );
 }
