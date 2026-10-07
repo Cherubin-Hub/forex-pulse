@@ -86,21 +86,23 @@ export interface Database {
         Row: {
           id: string;
           user_id: string;
-          account_balance: number;
-          risk_per_trade: number;
-          max_daily_loss: number;
+          trader_profile: string;
+          risk_per_trade_percent: number;
           min_risk_reward: number;
-          high_impact_news_buffer: number;
+          max_open_setups: number;
+          session_focus: string[];
+          news_sensitivity: string;
           updated_at: string;
         };
         Insert: {
           id?: string;
           user_id: string;
-          account_balance?: number;
-          risk_per_trade?: number;
-          max_daily_loss?: number;
+          trader_profile?: string;
+          risk_per_trade_percent?: number;
           min_risk_reward?: number;
-          high_impact_news_buffer?: number;
+          max_open_setups?: number;
+          session_focus?: string[];
+          news_sensitivity?: string;
           updated_at?: string;
         };
         Update: Partial<Database["public"]["Tables"]["user_settings"]["Insert"]>;
