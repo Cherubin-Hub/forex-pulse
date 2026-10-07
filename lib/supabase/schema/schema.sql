@@ -47,11 +47,12 @@ create table if not exists public.session_reports (
 create table if not exists public.user_settings (
     id uuid primary key default uuid_generate_v4(),
     user_id uuid unique references auth.users(id) on delete cascade not null,
-    account_balance numeric not null default 10000.0,
-    risk_per_trade numeric not null default 1.0,
-    max_daily_loss numeric not null default 3.0,
+    trader_profile text not null default 'DAY_TRADER',
+    risk_per_trade_percent numeric not null default 1.0,
     min_risk_reward numeric not null default 2.0,
-    high_impact_news_buffer integer not null default 30,
+    max_open_setups integer not null default 3,
+    session_focus text[] not null default array['LONDON', 'NEW_YORK'],
+    news_sensitivity text not null default 'CONSERVATIVE',
     updated_at timestamp with time zone default timezone('utc'::text, now()) not null
 );
 
