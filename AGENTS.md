@@ -59,10 +59,10 @@ We strictly separate data models, UI, and business logic to ensure an easy trans
 - [x] Market News Module (Impact-coded feed).
 
 ### 🚧 Phase 2: Technicals, Execution & Risk (UP NEXT)
-- [ ] **Risk Management (`/risk`):** Position size calculator based on strict account percentage risk.
-- [ ] **Trading Setups State Machine:** Finalizing the logic for `WAITING` -> `TRIGGERED` -> `TP/SL`.
-- [ ] **Technical Analysis (`/technical`):** Multi-timeframe trend dashboards (EMA, RSI, ATR).
-- [ ] **TradingView Integration:** Embedding interactive chart widgets on relevant pages.
+- [x] **Risk Management (`/risk`):** Position size calculator based on strict account percentage risk.
+- [x] **Trading Setups State Machine:** Finalizing the logic for `WAITING` -> `TRIGGERED` -> `TP/SL`.
+- [x] **Technical Analysis (`/technical`):** Multi-timeframe trend dashboards (EMA, RSI, ATR).
+- [x] **TradingView Integration:** Embedding interactive chart widgets on relevant pages.
 
 ### 🔮 Phase 3: Analytics & Backend (FUTURE)
 - [ ] Setup History & Win-rate Analytics.
