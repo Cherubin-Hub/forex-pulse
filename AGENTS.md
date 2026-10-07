@@ -66,5 +66,5 @@ We strictly separate data models, UI, and business logic to ensure an easy trans
 
 ### 🔮 Phase 3: Analytics & Backend (FUTURE)
 - [x] Setup History & Win-rate Analytics.
-- [ ] AI-generated Session Reports (`/reports`).
+- [x] AI-generated Session Reports (`/reports`).
 - [ ] Supabase Integration (PostgreSQL + Auth).
