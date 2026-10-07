@@ -68,3 +68,5 @@ We strictly separate data models, UI, and business logic to ensure an easy trans
 - [x] Setup History & Win-rate Analytics.
 - [x] AI-generated Session Reports (`/reports`).
 - [ ] Supabase Integration (PostgreSQL + Auth).
+  - [x] Client Setup & PostgreSQL Schema (`supabase/schema.sql`).
+  - [ ] Service Layer Controller Migration (Mock -> Supabase with offline fallback).
