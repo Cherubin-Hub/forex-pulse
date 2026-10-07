@@ -6,6 +6,7 @@ import type { SetupStatus, TradingSetup } from "@/types/setup";
 import { INSTRUMENTS } from "@/lib/constants/instruments";
 import { formatPrice } from "@/lib/formatters";
 import { cn } from "@/lib/utils";
+import { SetupStatusActions } from "@/components/setups/SetupStatusActions";
 
 const STATUS_CONFIG: Record<SetupStatus, { label: string; icon: LucideIcon; color: string }> = {
   WAITING_FOR_CONFIRMATION: { label: "Waiting", icon: Clock, color: "text-amber-500 bg-amber-500/10" },
@@ -74,14 +75,21 @@ export function SetupCard({ setup }: { setup: TradingSetup }) {
         </div>
       </div>
 
-      {/* Footer */}
-      <div className="mt-4 flex items-center justify-between border-t border-border pt-3">
-        <span className="text-xs text-muted-foreground truncate max-w-[200px]">
-          Invalidation: {setup.invalidationRule}
-        </span>
-        <span className="rounded bg-muted px-2 py-1 text-xs font-semibold">
-          R:R 1:{setup.riskReward.toFixed(1)}
-        </span>
+      {/* Footer & Interactive Transitions */}
+      <div className="mt-4 flex flex-col gap-2.5 border-t border-border pt-3">
+        <div className="flex items-center justify-between">
+          <span className="text-xs text-muted-foreground truncate max-w-[200px]">
+            Invalidation: {setup.invalidationRule}
+          </span>
+          <span className="rounded bg-muted px-2 py-1 text-xs font-semibold">
+            R:R 1:{setup.riskReward.toFixed(1)}
+          </span>
+        </div>
+
+        {/* Action Buttons for Pending or Active Setups */}
+        <div className="flex justify-end">
+          <SetupStatusActions setupId={setup.id} currentStatus={setup.status} />
+        </div>
       </div>
     </motion.article>
   );
