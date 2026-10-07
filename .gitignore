@@ -43,4 +43,9 @@ next-env.d.ts
 
 /node_modules
 /.next
-.env*
+.env.local
+
+# env files (ignore all local env files, but keep .env.example tracked)
+.env*.local
+.env
+!.env.example
