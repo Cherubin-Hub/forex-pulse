@@ -65,6 +65,6 @@ We strictly separate data models, UI, and business logic to ensure an easy trans
 - [ ] **TradingView Integration:** Embedding interactive chart widgets on relevant pages.
 
 ### 🔮 Phase 3: Analytics & Backend (FUTURE)
-- [ ] Setup History & Win-rate Analytics.
+- [x] Setup History & Win-rate Analytics.
 - [ ] AI-generated Session Reports (`/reports`).
 - [ ] Supabase Integration (PostgreSQL + Auth).
