@@ -94,3 +94,32 @@ export function formatDayKeyPHT(value: string | Date): string {
 export function formatDayLabelPHT(value: string | Date): string {
   return PHT_DAY_LABEL_FORMATTER.format(new Date(value));
 }
+
+/**
+ * Calculates pip movement based on instrument decimal precision.
+ * - 5-decimal pairs: 1 pip = 0.0001 (diff * 10,000)
+ * - 3-decimal pairs (JPY): 1 pip = 0.01 (diff * 100)
+ * - 2-decimal commodities (Gold): 1 pt = 0.10 (diff * 10)
+ */
+export function calculatePipChange(
+  price: number | null,
+  previousClose: number | null,
+  decimals: number
+): number {
+  if (price === null || previousClose === null) return 0;
+  const multiplier = decimals === 5 ? 10000 : decimals === 3 ? 100 : 10;
+  return Number(((price - previousClose) * multiplier).toFixed(1));
+}
+
+/**
+ * Calculates the total intra-day range (High - Low) in pips.
+ */
+export function calculateDailyRangePips(
+  high: number | null,
+  low: number | null,
+  decimals: number
+): number {
+  if (high === null || low === null) return 0;
+  const multiplier = decimals === 5 ? 10000 : decimals === 3 ? 100 : 10;
+  return Number(((high - low) * multiplier).toFixed(1));
+}
