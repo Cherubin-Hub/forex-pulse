@@ -13,3 +13,19 @@ export type TechnicalAnalysis = {
   timeframes: Record<Timeframe, IndicatorData>;
   overallBias: TrendDirection;
 };
+
+export type PivotLevels = {
+  pivot: number;
+  r1: number;
+  r2: number;
+  s1: number;
+  s2: number;
+  projectedHigh: number;
+  projectedLow: number;
+};
+
+export type ConfluenceScore = {
+  scorePercent: number;
+  dominantTrend: TrendDirection;
+  alignmentLabel: string;
+};
