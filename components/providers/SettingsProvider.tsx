@@ -21,8 +21,8 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     // 1. Instant local load for hydration matching
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- Hydration match pattern (syncing with localStorage)
     const local = loadSettings();
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- Hydration match pattern (syncing with localStorage)
     setSettings(local);
     setIsLoaded(true);
 
