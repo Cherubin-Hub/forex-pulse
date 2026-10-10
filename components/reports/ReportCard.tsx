@@ -1,5 +1,6 @@
 "use client";
 
+import { useTransition } from "react";
 import { motion } from "framer-motion";
 import { 
   ShieldAlert, 
@@ -8,10 +9,14 @@ import {
   Clock, 
   ArrowUpRight, 
   ArrowDownRight, 
-  Minus 
+  Minus,
+  Trash2,
+  Loader2
 } from "lucide-react";
 import type { SessionReport, MarketBias, VolatilityExpectation } from "@/types/report";
 import { formatTimePHT } from "@/lib/formatters";
+import { deleteSessionReport } from "@/app/actions/reportActions";
+import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
 function getBiasBadge(bias: MarketBias) {
@@ -43,8 +48,19 @@ function getVolatilityBadge(vol: VolatilityExpectation) {
 }
 
 export function ReportCard({ report }: { report: SessionReport }) {
+  const [isDeleting, startDelete] = useTransition();
   const biasBadge = getBiasBadge(report.bias);
   const volBadge = getVolatilityBadge(report.volatility);
+
+  const handleDelete = () => {
+    if (!confirm("Are you sure you want to delete this session report?")) return;
+    startDelete(async () => {
+      const result = await deleteSessionReport(report.id);
+      if (!result.success) {
+        alert(`Failed to delete: ${result.error}`);
+      }
+    });
+  };
 
   return (
     <motion.article
@@ -73,6 +89,20 @@ export function ReportCard({ report }: { report: SessionReport }) {
             <Flame className="h-3.5 w-3.5" />
             {volBadge.label}
           </span>
+          <Button
+            size="sm"
+            variant="ghost"
+            className="h-8 w-8 p-0 text-muted-foreground hover:text-destructive"
+            onClick={handleDelete}
+            disabled={isDeleting}
+            title="Delete Session Report"
+          >
+            {isDeleting ? (
+              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+            ) : (
+              <Trash2 className="h-3.5 w-3.5" />
+            )}
+          </Button>
         </div>
       </div>
 
