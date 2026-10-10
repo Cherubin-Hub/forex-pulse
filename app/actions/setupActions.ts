@@ -13,7 +13,6 @@ export interface UpdateStatusResult {
 
 /**
  * Server Action to update the lifecycle status of an existing trading setup.
- * Persists directly to Supabase and revalidates relevant dashboard pages.
  */
 export async function updateSetupStatus(
   setupId: string,
@@ -22,13 +21,11 @@ export async function updateSetupStatus(
   try {
     const supabase = await createServerSupabaseClient();
 
-    // 1. Verify user session
     const { data: { user }, error: authError } = await supabase.auth.getUser();
     if (authError || !user) {
       return { success: false, error: "Unauthorized. Please log in." };
     }
 
-    // 2. Update status (RLS guarantees update only succeeds if user owns the record)
     const { error } = await supabase
       .from("trading_setups")
       .update({
@@ -42,7 +39,6 @@ export async function updateSetupStatus(
       return { success: false, error: error.message };
     }
 
-    // 3. Revalidate affected routes so UI refreshes immediately
     revalidatePath("/setups");
     revalidatePath("/setups/history");
     revalidatePath("/");
@@ -64,7 +60,6 @@ export async function createTradingSetup(
     const validated = createSetupSchema.parse(formData);
     const supabase = await createServerSupabaseClient();
 
-    // 1. Enforce active authentication
     const { data: { user }, error: authError } = await supabase.auth.getUser();
     if (authError || !user) {
       return { success: false, error: "Unauthorized. Please log in." };
@@ -82,7 +77,6 @@ export async function createTradingSetup(
       ? validated.confluenceTags.split(",").map((t: string) => t.trim()).filter(Boolean)
       : [];
 
-    // 2. Persist setup explicitly tagged with user.id
     const { error } = await supabase.from("trading_setups").insert({
       user_id: user.id,
       symbol: validated.symbol,
@@ -115,8 +109,123 @@ export async function createTradingSetup(
 }
 
 /**
+ * Server Action to modify and update parameters of an existing trading setup.
+ */
+export async function updateTradingSetup(
+  setupId: string,
+  formData: CreateSetupFormData
+): Promise<UpdateStatusResult> {
+  try {
+    const validated = createSetupSchema.parse(formData);
+    const supabase = await createServerSupabaseClient();
+
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    if (authError || !user) {
+      return { success: false, error: "Unauthorized. Please log in." };
+    }
+
+    const avgEntry = (validated.entryMin + validated.entryMax) / 2;
+    const riskReward = calculateRiskReward(
+      validated.direction,
+      avgEntry,
+      validated.stopLoss,
+      validated.takeProfit1
+    );
+
+    const confluenceTags = validated.confluenceTags
+      ? validated.confluenceTags.split(",").map((t: string) => t.trim()).filter(Boolean)
+      : [];
+
+    const { error } = await supabase
+      .from("trading_setups")
+      .update({
+        symbol: validated.symbol,
+        direction: validated.direction,
+        entry_min: validated.entryMin,
+        entry_max: validated.entryMax,
+        stop_loss: validated.stopLoss,
+        take_profit_1: validated.takeProfit1,
+        risk_reward: riskReward,
+        invalidation_rule: validated.invalidationRule,
+        notes: validated.notes ?? null,
+        confluence_tags: confluenceTags,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", setupId);
+
+    if (error) {
+      console.error("Supabase setup update error:", error.message);
+      return { success: false, error: error.message };
+    }
+
+    revalidatePath("/setups");
+    revalidatePath("/setups/history");
+    revalidatePath("/");
+
+    return { success: true };
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : "Failed to update setup";
+    return { success: false, error: message };
+  }
+}
+
+/**
+ * Server Action to immediately trail an active trade's stop loss to Breakeven (entry midpoint).
+ */
+export async function setSetupToBreakeven(
+  setupId: string
+): Promise<UpdateStatusResult> {
+  try {
+    const supabase = await createServerSupabaseClient();
+
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    if (authError || !user) {
+      return { success: false, error: "Unauthorized. Please log in." };
+    }
+
+    // 1. Fetch current setup to determine entry midpoint
+    const { data: setup, error: fetchError } = await supabase
+      .from("trading_setups")
+      .select("entry_min, entry_max, notes")
+      .eq("id", setupId)
+      .single();
+
+    if (fetchError || !setup) {
+      return { success: false, error: "Setup not found." };
+    }
+
+    const avgEntry = (Number(setup.entry_min) + Number(setup.entry_max)) / 2;
+    const updatedNotes = setup.notes 
+      ? `${setup.notes} [SL moved to Breakeven @ ${avgEntry}]`
+      : `[SL moved to Breakeven @ ${avgEntry}]`;
+
+    // 2. Persist Breakeven Stop Loss
+    const { error: updateError } = await supabase
+      .from("trading_setups")
+      .update({
+        stop_loss: avgEntry,
+        notes: updatedNotes,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", setupId);
+
+    if (updateError) {
+      return { success: false, error: updateError.message };
+    }
+
+    revalidatePath("/setups");
+    revalidatePath("/setups/history");
+    revalidatePath("/");
+
+    return { success: true };
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : "Failed to set Breakeven";
+    return { success: false, error: message };
+  }
+}
+
+/**
  * Server Action to delete a trading setup.
- * Protected by authentication and Row Level Security.
  */
 export async function deleteTradingSetup(
   setupId: string
@@ -124,13 +233,11 @@ export async function deleteTradingSetup(
   try {
     const supabase = await createServerSupabaseClient();
 
-    // 1. Enforce authentication
     const { data: { user }, error: authError } = await supabase.auth.getUser();
     if (authError || !user) {
       return { success: false, error: "Unauthorized. Please log in." };
     }
 
-    // 2. Perform deletion (RLS ensures users only delete their own setups)
     const { error } = await supabase
       .from("trading_setups")
       .delete()
@@ -141,7 +248,6 @@ export async function deleteTradingSetup(
       return { success: false, error: error.message };
     }
 
-    // 3. Revalidate dashboard caches
     revalidatePath("/setups");
     revalidatePath("/setups/history");
     revalidatePath("/");
