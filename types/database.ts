@@ -1,5 +1,8 @@
 import type { TradeDirection, SetupStatus } from "./setup";
 import type { SessionType, MarketBias, VolatilityExpectation } from "./report";
+import type { EventImpact } from "./calendar";
+import type { NewsImpact } from "./news";
+import type { DataStatus } from "./market";
 
 export type Json =
   | string
@@ -106,6 +109,62 @@ export interface Database {
           updated_at?: string;
         };
         Update: Partial<Database["public"]["Tables"]["user_settings"]["Insert"]>;
+        Relationships: [];
+      };
+      economic_events: {
+        Row: {
+          id: string;
+          title: string;
+          currency: string;
+          impact: EventImpact;
+          scheduled_at: string;
+          forecast: string | null;
+          previous: string | null;
+          actual: string | null;
+          source: string;
+          status: DataStatus;
+          created_at: string;
+        };
+        Insert: {
+          id: string;
+          title: string;
+          currency: string;
+          impact: EventImpact;
+          scheduled_at: string;
+          forecast?: string | null;
+          previous?: string | null;
+          actual?: string | null;
+          source?: string;
+          status?: DataStatus;
+          created_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["economic_events"]["Insert"]>;
+        Relationships: [];
+      };
+      market_news: {
+        Row: {
+          id: string;
+          headline: string;
+          summary: string;
+          source: string;
+          url: string | null;
+          impact: NewsImpact;
+          currencies: string[];
+          published_at: string;
+          created_at: string;
+        };
+        Insert: {
+          id: string;
+          headline: string;
+          summary: string;
+          source: string;
+          url?: string | null;
+          impact: NewsImpact;
+          currencies?: string[];
+          published_at: string;
+          created_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["market_news"]["Insert"]>;
         Relationships: [];
       };
     };
