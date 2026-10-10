@@ -20,10 +20,11 @@ export function PositionCalculator() {
   // Automatically sync the risk percent from user settings when loaded
   useEffect(() => {
     if (isLoaded && settings) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- Hydration match pattern
       setRiskPercent(settings.riskPerTradePercent);
     }
   }, [isLoaded, settings]);
-
+  
   // Position Sizing Math
   const riskAmount = balance * (riskPercent / 100);
   
