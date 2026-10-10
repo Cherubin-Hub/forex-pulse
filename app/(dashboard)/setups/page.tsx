@@ -1,12 +1,16 @@
 import { getActiveSetups } from "@/lib/services/setups";
 import { SetupGrid } from "@/components/setups/SetupGrid";
 import { CreateSetupModal } from "@/components/setups/CreateSetupModal";
+import { SetupRealtimeListener } from "@/components/setups/SetupRealtimeListener";
 
 export default async function SetupsPage() {
   const setups = await getActiveSetups();
 
   return (
     <div className="space-y-6">
+      {/* Realtime WebSocket subscription */}
+      <SetupRealtimeListener />
+
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between border-b border-border pb-4">
         <div>
           <h2 className="text-2xl font-bold tracking-tight">Active Setups</h2>
