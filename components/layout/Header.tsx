@@ -1,12 +1,11 @@
 "use client";
 
 import { usePathname } from "next/navigation";
-import { Bell } from "lucide-react";
 import { NAV_SECTIONS } from "@/lib/constants/navigation";
 import { ThemeToggle } from "@/components/layout/ThemeToggle";
-import { Button } from "@/components/ui/button";
 import { MobileSidebar } from "@/components/layout/MobileSidebar";
 import { UserNav } from "@/components/layout/UserNav";
+import { NotificationsDropdown } from "@/components/notifications/NotificationsDropdown";
 
 function getPageTitle(pathname: string): string {
   const allItems = NAV_SECTIONS.flatMap((section) => section.items);
@@ -25,9 +24,8 @@ export function Header() {
         <h1 className="text-lg font-semibold tracking-tight">{title}</h1>
       </div>
       <div className="flex items-center gap-2">
-        <Button variant="ghost" size="icon" aria-label="Notifications">
-          <Bell className="h-5 w-5" />
-        </Button>
+        {/* Dynamic Notification Dispatch */}
+        <NotificationsDropdown />
         <ThemeToggle />
         <UserNav />
       </div>
