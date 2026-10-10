@@ -1,3 +1,67 @@
+# Step 22: Server Actions for Trade Management & Calculations
+
+## 🎯 Overview
+In this step, we implement Next.js Server Actions to execute trade creation and status transitions directly on the server, enforcing tamper-proof mathematical risk-to-reward calculations and triggering instantaneous Next.js cache revalidations.
+
+---
+
+### 1. Risk-to-Reward Math Utilities (`lib/setupUtils.ts`)
+
+Encapsulates mathematical validation for trade entries and targets.
+
+**File:** `lib/setupUtils.ts`
+```typescript
+import type { TradeDirection } from "@/types/setup";
+
+/**
+ * Calculates Risk:Reward ratio.
+ * Always returns a positive number (e.g., 2.5 for a 1:2.5 trade).
+ */
+export function calculateRiskReward(
+  direction: TradeDirection,
+  entryAvg: number,
+  stopLoss: number,
+  takeProfit: number
+): number {
+  if (entryAvg === stopLoss) return 0; // Prevent division by zero
+
+  const risk = Math.abs(entryAvg - stopLoss);
+  const reward = Math.abs(takeProfit - entryAvg);
+  
+  // Double-check logic: A LONG trade must have TP > Entry > SL.
+  if (direction === "LONG" && (takeProfit <= entryAvg || stopLoss >= entryAvg)) return 0;
+  if (direction === "SHORT" && (takeProfit >= entryAvg || stopLoss <= entryAvg)) return 0;
+
+  return reward / risk;
+}
+
+/**
+ * Validates if a setup passes the user's strict risk rules.
+ */
+export function validateSetupRisk(
+  rr: number,
+  minAllowedRR: number
+): { isValid: boolean; reason?: string } {
+  if (rr < minAllowedRR) {
+    return {
+      isValid: false,
+      reason: `R:R of 1:${rr.toFixed(1)} is below your minimum rule of 1:${minAllowedRR}`,
+    };
+  }
+  return { isValid: true };
+}
+```
+
+#### Why this was written this way:
+- **Directional Safety Guard:** Returns 0 if a target is inverted (e.g. TP below Entry on a Long trade).
+- **Zero-Division Handling:** Guards against `entryAvg === stopLoss` to prevent `Infinity` or `NaN` calculations in database records.
+
+---
+
+### 2. Full Server Actions Module (`app/actions/setupActions.ts`)
+
+**File:** `app/actions/setupActions.ts`
+```typescript
 "use server";
 
 import { revalidatePath } from "next/cache";
@@ -113,42 +177,8 @@ export async function createTradingSetup(
     return { success: false, error: message };
   }
 }
+```
 
-/**
- * Server Action to delete a trading setup.
- * Protected by authentication and Row Level Security.
- */
-export async function deleteTradingSetup(
-  setupId: string
-): Promise<UpdateStatusResult> {
-  try {
-    const supabase = await createServerSupabaseClient();
-
-    // 1. Enforce authentication
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
-    if (authError || !user) {
-      return { success: false, error: "Unauthorized. Please log in." };
-    }
-
-    // 2. Perform deletion (RLS ensures users only delete their own setups)
-    const { error } = await supabase
-      .from("trading_setups")
-      .delete()
-      .eq("id", setupId);
-
-    if (error) {
-      console.error("Failed to delete setup:", error.message);
-      return { success: false, error: error.message };
-    }
-
-    // 3. Revalidate dashboard caches
-    revalidatePath("/setups");
-    revalidatePath("/setups/history");
-    revalidatePath("/");
-
-    return { success: true };
-  } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : "Failed to delete setup";
-    return { success: false, error: message };
-  }
-}
+#### Why this was written this way:
+- **Server-Side Validation:** Re-running `createSetupSchema.parse` on the server prevents bypassed client-side validation from inserting corrupt data.
+- **Cache Invalidation:** `revalidatePath("/setups")` invalidates Next.js's data cache so users immediately see their new setup without waiting for background revalidation timers.

@@ -6,6 +6,7 @@ import { NAV_SECTIONS } from "@/lib/constants/navigation";
 import { ThemeToggle } from "@/components/layout/ThemeToggle";
 import { Button } from "@/components/ui/button";
 import { MobileSidebar } from "@/components/layout/MobileSidebar";
+import { UserNav } from "@/components/layout/UserNav";
 
 function getPageTitle(pathname: string): string {
   const allItems = NAV_SECTIONS.flatMap((section) => section.items);
@@ -28,9 +29,7 @@ export function Header() {
           <Bell className="h-5 w-5" />
         </Button>
         <ThemeToggle />
-        <div className="ml-2 flex h-8 w-8 items-center justify-center rounded-full bg-primary text-xs font-semibold text-primary-foreground">
-          FP
-        </div>
+        <UserNav />
       </div>
     </header>
   );

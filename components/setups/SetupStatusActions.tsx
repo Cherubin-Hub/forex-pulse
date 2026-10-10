@@ -6,10 +6,11 @@ import {
   CheckCircle, 
   XCircle, 
   Ban, 
+  Trash2,
   Loader2 
 } from "lucide-react";
 import type { SetupStatus } from "@/types/setup";
-import { updateSetupStatus } from "@/app/actions/setupActions";
+import { updateSetupStatus, deleteTradingSetup } from "@/app/actions/setupActions";
 import { Button } from "@/components/ui/button";
 
 interface SetupStatusActionsProps {
@@ -25,6 +26,16 @@ export function SetupStatusActions({ setupId, currentStatus }: SetupStatusAction
       const result = await updateSetupStatus(setupId, nextStatus);
       if (!result.success) {
         alert(`Failed to update trade: ${result.error}`);
+      }
+    });
+  };
+
+  const handleDelete = () => {
+    if (!confirm("Are you sure you want to delete this trading setup?")) return;
+    startTransition(async () => {
+      const result = await deleteTradingSetup(setupId);
+      if (!result.success) {
+        alert(`Failed to delete setup: ${result.error}`);
       }
     });
   };
@@ -62,6 +73,15 @@ export function SetupStatusActions({ setupId, currentStatus }: SetupStatusAction
           <Ban className="h-3 w-3 mr-1" />
           Invalidate
         </Button>
+        <Button
+          size="sm"
+          variant="ghost"
+          className="h-7 w-7 p-0 text-muted-foreground hover:text-destructive"
+          onClick={handleDelete}
+          title="Delete Setup"
+        >
+          <Trash2 className="h-3.5 w-3.5" />
+        </Button>
       </div>
     );
   }
@@ -94,6 +114,16 @@ export function SetupStatusActions({ setupId, currentStatus }: SetupStatusAction
     );
   }
 
-  // Completed trades (TP_REACHED, SL_HIT, INVALIDATED) show no pending buttons
-  return null;
+  // For completed or historical setups, provide clean deletion option
+  return (
+    <Button
+      size="sm"
+      variant="ghost"
+      className="h-7 w-7 p-0 text-muted-foreground hover:text-destructive ml-auto"
+      onClick={handleDelete}
+      title="Delete Setup"
+    >
+      <Trash2 className="h-3.5 w-3.5" />
+    </Button>
+  );
 }
