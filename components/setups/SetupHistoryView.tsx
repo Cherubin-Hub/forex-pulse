@@ -7,6 +7,7 @@ import { calculateSetupAnalytics } from "@/lib/analyticsUtils";
 import { exportSetupsToCSV } from "@/lib/exportUtils";
 import { SetupAnalyticsSummary } from "@/components/setups/SetupAnalyticsSummary";
 import { CumulativeRChart } from "@/components/setups/CumulativeRChart";
+import { ConfluenceTagMatrix } from "@/components/setups/ConfluenceTagMatrix";
 import { SetupGrid } from "@/components/setups/SetupGrid";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -49,6 +50,13 @@ export function SetupHistoryView({ initialSetups }: { initialSetups: TradingSetu
 
       {/* Cumulative R-Multiple Performance Curve */}
       <CumulativeRChart setups={initialSetups} />
+
+      {/* Playbook Edge & Confluence Matrix */}
+      <ConfluenceTagMatrix
+        setups={initialSetups}
+        activeTag={searchQuery}
+        onSelectTag={(tag) => setSearchQuery(tag)}
+      />
 
       {/* Filter & Export Toolbar */}
       <div className="flex flex-col gap-3 rounded-xl border border-border bg-card p-4 shadow-sm">
