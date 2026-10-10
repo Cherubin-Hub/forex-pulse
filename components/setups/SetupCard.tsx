@@ -7,6 +7,7 @@ import { INSTRUMENTS } from "@/lib/constants/instruments";
 import { formatPrice } from "@/lib/formatters";
 import { cn } from "@/lib/utils";
 import { SetupStatusActions } from "@/components/setups/SetupStatusActions";
+import { EditSetupModal } from "@/components/setups/EditSetupModal";
 
 const STATUS_CONFIG: Record<SetupStatus, { label: string; icon: LucideIcon; color: string }> = {
   WAITING_FOR_CONFIRMATION: { label: "Waiting", icon: Clock, color: "text-amber-500 bg-amber-500/10" },
@@ -41,6 +42,8 @@ export function SetupCard({ setup }: { setup: TradingSetup }) {
               {isLong ? <ArrowUpRight className="h-4 w-4" /> : <ArrowDownRight className="h-4 w-4" />}
             </span>
             <h3 className="font-semibold">{setup.symbol}</h3>
+            {/* Quick Edit Modal */}
+            <EditSetupModal setup={setup} />
           </div>
           <span className={cn("inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium", status.color)}>
             <StatusIcon className="h-3 w-3" />
@@ -78,7 +81,7 @@ export function SetupCard({ setup }: { setup: TradingSetup }) {
       {/* Footer & Interactive Transitions */}
       <div className="mt-4 flex flex-col gap-2.5 border-t border-border pt-3">
         <div className="flex items-center justify-between">
-          <span className="text-xs text-muted-foreground truncate max-w-[200px]">
+          <span className="text-xs text-muted-foreground truncate max-w-[200px]" title={setup.invalidationRule}>
             Invalidation: {setup.invalidationRule}
           </span>
           <span className="rounded bg-muted px-2 py-1 text-xs font-semibold">

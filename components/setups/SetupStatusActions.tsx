@@ -6,11 +6,12 @@ import {
   CheckCircle, 
   XCircle, 
   Ban, 
-  Trash2,
-  Loader2 
+  Trash2, 
+  Loader2,
+  ShieldCheck
 } from "lucide-react";
 import type { SetupStatus } from "@/types/setup";
-import { updateSetupStatus, deleteTradingSetup } from "@/app/actions/setupActions";
+import { updateSetupStatus, deleteTradingSetup, setSetupToBreakeven } from "@/app/actions/setupActions";
 import { Button } from "@/components/ui/button";
 
 interface SetupStatusActionsProps {
@@ -26,6 +27,15 @@ export function SetupStatusActions({ setupId, currentStatus }: SetupStatusAction
       const result = await updateSetupStatus(setupId, nextStatus);
       if (!result.success) {
         alert(`Failed to update trade: ${result.error}`);
+      }
+    });
+  };
+
+  const handleBreakeven = () => {
+    startTransition(async () => {
+      const result = await setSetupToBreakeven(setupId);
+      if (!result.success) {
+        alert(`Failed to set Breakeven: ${result.error}`);
       }
     });
   };
@@ -93,12 +103,22 @@ export function SetupStatusActions({ setupId, currentStatus }: SetupStatusAction
         <Button
           size="sm"
           variant="outline"
+          className="h-7 px-2 text-[11px] text-sky-500 border-sky-500/30 hover:bg-sky-500/10"
+          onClick={handleBreakeven}
+          title="Move Stop Loss to Entry Midpoint (Risk-Free)"
+        >
+          <ShieldCheck className="h-3 w-3 mr-1" />
+          BE
+        </Button>
+        <Button
+          size="sm"
+          variant="outline"
           className="h-7 px-2 text-[11px] text-emerald-500 border-emerald-500/30 hover:bg-emerald-500/10"
           onClick={() => handleTransition("TP_REACHED")}
           title="Log Win (Take Profit Reached)"
         >
           <CheckCircle className="h-3 w-3 mr-1" />
-          TP Reached
+          TP Hit
         </Button>
         <Button
           size="sm"
