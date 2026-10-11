@@ -96,7 +96,7 @@ export function SetupCard({ setup, quote }: { setup: TradingSetup; quote?: Price
 
         {/* Action Buttons for Pending or Active Setups */}
         <div className="flex justify-end">
-          <SetupStatusActions setupId={setup.id} currentStatus={setup.status} />
+          <SetupStatusActions setup={setup} />
         </div>
       </div>
     </motion.article>
