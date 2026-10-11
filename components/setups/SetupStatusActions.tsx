@@ -1,6 +1,6 @@
 "use client";
 
-import { useTransition } from "react";
+import { useState, useTransition } from "react";
 import { 
   Play, 
   CheckCircle, 
@@ -10,21 +10,22 @@ import {
   Loader2,
   ShieldCheck
 } from "lucide-react";
-import type { SetupStatus } from "@/types/setup";
+import type { SetupStatus, TradingSetup } from "@/types/setup";
 import { updateSetupStatus, deleteTradingSetup, setSetupToBreakeven } from "@/app/actions/setupActions";
+import { PreTradeGatekeeperModal } from "@/components/setups/PreTradeGatekeeperModal";
 import { Button } from "@/components/ui/button";
 
 interface SetupStatusActionsProps {
-  setupId: string;
-  currentStatus: SetupStatus;
+  setup: TradingSetup;
 }
 
-export function SetupStatusActions({ setupId, currentStatus }: SetupStatusActionsProps) {
+export function SetupStatusActions({ setup }: SetupStatusActionsProps) {
   const [isPending, startTransition] = useTransition();
+  const [isGatekeeperOpen, setIsGatekeeperOpen] = useState(false);
 
   const handleTransition = (nextStatus: SetupStatus) => {
     startTransition(async () => {
-      const result = await updateSetupStatus(setupId, nextStatus);
+      const result = await updateSetupStatus(setup.id, nextStatus);
       if (!result.success) {
         alert(`Failed to update trade: ${result.error}`);
       }
@@ -33,7 +34,7 @@ export function SetupStatusActions({ setupId, currentStatus }: SetupStatusAction
 
   const handleBreakeven = () => {
     startTransition(async () => {
-      const result = await setSetupToBreakeven(setupId);
+      const result = await setSetupToBreakeven(setup.id);
       if (!result.success) {
         alert(`Failed to set Breakeven: ${result.error}`);
       }
@@ -43,7 +44,7 @@ export function SetupStatusActions({ setupId, currentStatus }: SetupStatusAction
   const handleDelete = () => {
     if (!confirm("Are you sure you want to delete this trading setup?")) return;
     startTransition(async () => {
-      const result = await deleteTradingSetup(setupId);
+      const result = await deleteTradingSetup(setup.id);
       if (!result.success) {
         alert(`Failed to delete setup: ${result.error}`);
       }
@@ -60,44 +61,54 @@ export function SetupStatusActions({ setupId, currentStatus }: SetupStatusAction
   }
 
   // Actions available when WAITING_FOR_CONFIRMATION
-  if (currentStatus === "WAITING_FOR_CONFIRMATION") {
+  if (setup.status === "WAITING_FOR_CONFIRMATION") {
     return (
-      <div className="flex items-center gap-1.5">
-        <Button
-          size="sm"
-          variant="outline"
-          className="h-7 px-2 text-[11px] text-sky-500 border-sky-500/30 hover:bg-sky-500/10"
-          onClick={() => handleTransition("ENTRY_TRIGGERED")}
-          title="Trigger Entry"
-        >
-          <Play className="h-3 w-3 mr-1 fill-sky-500" />
-          Trigger
-        </Button>
-        <Button
-          size="sm"
-          variant="ghost"
-          className="h-7 px-2 text-[11px] text-muted-foreground hover:text-foreground"
-          onClick={() => handleTransition("INVALIDATED")}
-          title="Structure Broken"
-        >
-          <Ban className="h-3 w-3 mr-1" />
-          Invalidate
-        </Button>
-        <Button
-          size="sm"
-          variant="ghost"
-          className="h-7 w-7 p-0 text-muted-foreground hover:text-destructive"
-          onClick={handleDelete}
-          title="Delete Setup"
-        >
-          <Trash2 className="h-3.5 w-3.5" />
-        </Button>
-      </div>
+      <>
+        <div className="flex items-center gap-1.5">
+          <Button
+            size="sm"
+            variant="outline"
+            className="h-7 px-2 text-[11px] text-sky-500 border-sky-500/30 hover:bg-sky-500/10"
+            onClick={() => setIsGatekeeperOpen(true)}
+            title="Pre-Flight Risk Check & Trigger"
+          >
+            <Play className="h-3 w-3 mr-1 fill-sky-500" />
+            Trigger
+          </Button>
+          <Button
+            size="sm"
+            variant="ghost"
+            className="h-7 px-2 text-[11px] text-muted-foreground hover:text-foreground"
+            onClick={() => handleTransition("INVALIDATED")}
+            title="Structure Broken"
+          >
+            <Ban className="h-3 w-3 mr-1" />
+            Invalidate
+          </Button>
+          <Button
+            size="sm"
+            variant="ghost"
+            className="h-7 w-7 p-0 text-muted-foreground hover:text-destructive"
+            onClick={handleDelete}
+            title="Delete Setup"
+          >
+            <Trash2 className="h-3.5 w-3.5" />
+          </Button>
+        </div>
+
+        {/* Pre-Trade Disciplinarian Gatekeeper Modal */}
+        <PreTradeGatekeeperModal
+          setup={setup}
+          isOpen={isGatekeeperOpen}
+          onClose={() => setIsGatekeeperOpen(false)}
+          onConfirm={() => handleTransition("ENTRY_TRIGGERED")}
+        />
+      </>
     );
   }
 
   // Actions available when ENTRY_TRIGGERED (Active Trade)
-  if (currentStatus === "ENTRY_TRIGGERED") {
+  if (setup.status === "ENTRY_TRIGGERED") {
     return (
       <div className="flex items-center gap-1.5">
         <Button
