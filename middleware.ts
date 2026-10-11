@@ -2,12 +2,10 @@ import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 
 export async function middleware(request: NextRequest) {
-  // Create an unmodified response
   let supabaseResponse = NextResponse.next({
     request,
   })
 
-  // Create the Supabase client for the middleware
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
@@ -29,22 +27,28 @@ export async function middleware(request: NextRequest) {
     }
   )
 
-  // Fetch the current user session securely
+  // 1. Check Supabase user
   const {
     data: { user },
   } = await supabase.auth.getUser()
 
-  const isPublicRoute = request.nextUrl.pathname.startsWith('/login') || request.nextUrl.pathname.startsWith('/api')
+  // 2. Check Pulse Gateway SSO cookie
+  const gatewaySession = request.cookies.get("fp_gateway_session")?.value
+  const isAuthenticated = Boolean(user || gatewaySession)
 
-  // If no user and not on a public route, redirect to login
-  if (!user && !isPublicRoute) {
+  const isPublicRoute =
+    request.nextUrl.pathname.startsWith('/login') ||
+    request.nextUrl.pathname.startsWith('/api')
+
+  // If unauthenticated and on a protected route, redirect to login
+  if (!isAuthenticated && !isPublicRoute) {
     const url = request.nextUrl.clone()
     url.pathname = '/login'
     return NextResponse.redirect(url)
   }
 
-  // If user is already logged in and tries to visit login, redirect to dashboard
-  if (user && request.nextUrl.pathname === '/login') {
+  // If already authenticated and visiting login, redirect to dashboard
+  if (isAuthenticated && request.nextUrl.pathname === '/login') {
     const url = request.nextUrl.clone()
     url.pathname = '/'
     return NextResponse.redirect(url)
@@ -53,7 +57,6 @@ export async function middleware(request: NextRequest) {
   return supabaseResponse
 }
 
-// Ensure the middleware only runs on actual pages/API routes, ignoring static files
 export const config = {
   matcher: [
     '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
