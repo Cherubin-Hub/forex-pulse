@@ -9,7 +9,7 @@
 - **Styling:** Tailwind CSS + shadcn/ui
 - **Animations:** Framer Motion
 - **Validation:** Zod + React Hook Form
-- **Database / Auth (Future):** Supabase (PostgreSQL)
+- **Database / Auth:** Supabase (PostgreSQL)
 
 ## 🏗 Architectural Rules (MVC Monolith)
 We strictly separate data models, UI, and business logic to ensure an easy transition from mock data to a real backend.
@@ -23,7 +23,7 @@ We strictly separate data models, UI, and business logic to ensure an easy trans
 3. **Controller (Services/Mock):** 
    - Components MUST NOT fetch or shape data directly. 
    - Components call asynchronous controllers in `/lib/services/` (e.g., `getQuotes()`).
-   - Controllers currently return data from `/lib/mock/`. Later, they will query Supabase or external APIs.
+   - Controllers query Supabase PostgreSQL with automated, offline fallback to deterministic mock datasets.
 
 ## 🧩 Established Coding Patterns
 1. **Strict Hydration Safety:** 
@@ -45,7 +45,7 @@ We strictly separate data models, UI, and business logic to ensure an easy trans
 
 ---
 
-## 🗺 Roadmap & Progress
+## 🗺 Roadmap & Progress (100% COMPLETED 🏆)
 
 ### ✅ Phase 1: Core Shell & Macro Data (COMPLETED)
 - [x] Next.js initialization & shadcn/ui setup.
@@ -58,15 +58,20 @@ We strictly separate data models, UI, and business logic to ensure an easy trans
 - [x] Gold (XAU/USD) Analysis (Macro Drivers, Key Levels).
 - [x] Market News Module (Impact-coded feed).
 
-### 🚧 Phase 2: Technicals, Execution & Risk (UP NEXT)
+### ✅ Phase 2: Technicals, Execution & Risk (COMPLETED)
 - [x] **Risk Management (`/risk`):** Position size calculator based on strict account percentage risk.
 - [x] **Trading Setups State Machine:** Finalizing the logic for `WAITING` -> `TRIGGERED` -> `TP/SL`.
 - [x] **Technical Analysis (`/technical`):** Multi-timeframe trend dashboards (EMA, RSI, ATR).
 - [x] **TradingView Integration:** Embedding interactive chart widgets on relevant pages.
 
-### 🔮 Phase 3: Analytics & Backend (FUTURE)
-- [x] Setup History & Win-rate Analytics.
+### ✅ Phase 3: Analytics & Backend (COMPLETED)
+- [x] Setup History & Win-rate Analytics (`/setups/history`).
 - [x] AI-generated Session Reports (`/reports`).
-- [ ] Supabase Integration (PostgreSQL + Auth).
-  - [x] Client Setup & PostgreSQL Schema (`supabase/schema.sql`).
-  - [ ] Service Layer Controller Migration (Mock -> Supabase with offline fallback).
+- [x] Supabase Integration (PostgreSQL + Auth).
+  - [x] Client Setup & Modular PostgreSQL Schema (`supabase/schema/`).
+  - [x] Complete Service Layer Controller Migration (Mock -> Supabase with resilient offline fallback).
+- [x] Institutional Pre-Trade Gatekeeper & Risk Lockdown Engine.
+- [x] Discipline Edge Matrix & Execution Quality Post-Mortems.
+- [x] Real-Time Streaming Ticker Tape & Multi-Asset Price Marquee.
+- [x] Diagnostic Database Seed & Health Engine (`/api/seed`).
+- [x] Production Build Verification & Security Hardening (`next.config.ts`).
