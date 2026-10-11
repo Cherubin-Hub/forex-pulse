@@ -1,13 +1,19 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Download, Search } from "lucide-react";
 import type { TradingSetup } from "@/types/setup";
 import { calculateSetupAnalytics } from "@/lib/analyticsUtils";
 import { exportSetupsToCSV } from "@/lib/exportUtils";
+import {
+  type ExecutionGrade,
+  type TradePostMortem,
+  loadAllPostMortems,
+} from "@/lib/postMortemUtils";
 import { SetupAnalyticsSummary } from "@/components/setups/SetupAnalyticsSummary";
 import { CumulativeRChart } from "@/components/setups/CumulativeRChart";
 import { ConfluenceTagMatrix } from "@/components/setups/ConfluenceTagMatrix";
+import { DisciplineEdgeMatrix } from "@/components/setups/DisciplineEdgeMatrix";
 import { SetupGrid } from "@/components/setups/SetupGrid";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -17,15 +23,27 @@ type FilterStatus = "ALL" | "TP_REACHED" | "SL_HIT" | "INVALIDATED";
 export function SetupHistoryView({ initialSetups }: { initialSetups: TradingSetup[] }) {
   const [filterStatus, setFilterStatus] = useState<FilterStatus>("ALL");
   const [selectedDirection, setSelectedDirection] = useState<"ALL" | "LONG" | "SHORT">("ALL");
+  const [selectedGrade, setSelectedGrade] = useState<"ALL" | ExecutionGrade>("ALL");
   const [searchQuery, setSearchQuery] = useState("");
+  const [reviews, setReviews] = useState<Record<string, TradePostMortem>>({});
 
-  // Filtered setups based on active status, direction, and keyword search
+  // Sync post-mortems from localStorage with hydration safety
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- Hydration match pattern
+    setReviews(loadAllPostMortems());
+  }, []);
+
+  // Filtered setups based on active status, direction, grade, and keyword search
   const filteredSetups = useMemo(() => {
     return initialSetups.filter((setup) => {
       const matchesStatus =
         filterStatus === "ALL" ? true : setup.status === filterStatus;
       const matchesDirection =
         selectedDirection === "ALL" ? true : setup.direction === selectedDirection;
+
+      const review = reviews[setup.id];
+      const matchesGrade =
+        selectedGrade === "ALL" ? true : review?.grade === selectedGrade;
 
       const q = searchQuery.toLowerCase().trim();
       const matchesSearch =
@@ -34,9 +52,9 @@ export function SetupHistoryView({ initialSetups }: { initialSetups: TradingSetu
         setup.notes.toLowerCase().includes(q) ||
         setup.confluenceTags.some((tag) => tag.toLowerCase().includes(q));
 
-      return matchesStatus && matchesDirection && matchesSearch;
+      return matchesStatus && matchesDirection && matchesGrade && matchesSearch;
     });
-  }, [initialSetups, filterStatus, selectedDirection, searchQuery]);
+  }, [initialSetups, filterStatus, selectedDirection, selectedGrade, searchQuery, reviews]);
 
   // Analytics calculated across all historical setups
   const analytics = useMemo(() => {
@@ -50,6 +68,14 @@ export function SetupHistoryView({ initialSetups }: { initialSetups: TradingSetu
 
       {/* Cumulative R-Multiple Performance Curve */}
       <CumulativeRChart setups={initialSetups} />
+
+      {/* Discipline Edge & Process Adherence Matrix */}
+      <DisciplineEdgeMatrix
+        setups={initialSetups}
+        reviews={reviews}
+        selectedGrade={selectedGrade}
+        onSelectGrade={(g) => setSelectedGrade(g)}
+      />
 
       {/* Playbook Edge & Confluence Matrix */}
       <ConfluenceTagMatrix
@@ -122,33 +148,52 @@ export function SetupHistoryView({ initialSetups }: { initialSetups: TradingSetu
           </div>
         </div>
 
-        {/* Direction Toggle */}
-        <div className="flex items-center gap-1 pt-2 border-t border-border/50">
-          <span className="text-[11px] font-medium text-muted-foreground mr-1.5">Direction:</span>
-          <Button
-            variant={selectedDirection === "ALL" ? "secondary" : "ghost"}
-            size="sm"
-            className="h-6 px-2 text-xs"
-            onClick={() => setSelectedDirection("ALL")}
-          >
-            All
-          </Button>
-          <Button
-            variant={selectedDirection === "LONG" ? "secondary" : "ghost"}
-            size="sm"
-            className="h-6 px-2 text-xs text-emerald-500 font-semibold"
-            onClick={() => setSelectedDirection("LONG")}
-          >
-            Long
-          </Button>
-          <Button
-            variant={selectedDirection === "SHORT" ? "secondary" : "ghost"}
-            size="sm"
-            className="h-6 px-2 text-xs text-rose-500 font-semibold"
-            onClick={() => setSelectedDirection("SHORT")}
-          >
-            Short
-          </Button>
+        {/* Direction & Grade Filter Toggles */}
+        <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-border/50 text-xs">
+          {/* Direction */}
+          <div className="flex items-center gap-1">
+            <span className="text-[11px] font-medium text-muted-foreground mr-1">Direction:</span>
+            <Button
+              variant={selectedDirection === "ALL" ? "secondary" : "ghost"}
+              size="sm"
+              className="h-6 px-2 text-xs"
+              onClick={() => setSelectedDirection("ALL")}
+            >
+              All
+            </Button>
+            <Button
+              variant={selectedDirection === "LONG" ? "secondary" : "ghost"}
+              size="sm"
+              className="h-6 px-2 text-xs text-emerald-500 font-semibold"
+              onClick={() => setSelectedDirection("LONG")}
+            >
+              Long
+            </Button>
+            <Button
+              variant={selectedDirection === "SHORT" ? "secondary" : "ghost"}
+              size="sm"
+              className="h-6 px-2 text-xs text-rose-500 font-semibold"
+              onClick={() => setSelectedDirection("SHORT")}
+            >
+              Short
+            </Button>
+          </div>
+
+          {/* Grade Filter */}
+          <div className="flex items-center gap-1">
+            <span className="text-[11px] font-medium text-muted-foreground mr-1">Grade:</span>
+            {(["ALL", "A", "B", "C", "D", "F"] as const).map((g) => (
+              <Button
+                key={g}
+                variant={selectedGrade === g ? "secondary" : "ghost"}
+                size="sm"
+                className="h-6 px-2 text-[11px] font-mono font-bold"
+                onClick={() => setSelectedGrade(g)}
+              >
+                {g === "ALL" ? "All" : g}
+              </Button>
+            ))}
+          </div>
         </div>
       </div>
 
