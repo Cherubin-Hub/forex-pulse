@@ -3,11 +3,13 @@
 import { motion } from "framer-motion";
 import { ArrowDownRight, ArrowUpRight, CheckCircle2, Clock, XCircle, AlertCircle, Activity, type LucideIcon } from "lucide-react";
 import type { SetupStatus, TradingSetup } from "@/types/setup";
+import type { PriceQuote } from "@/types/market";
 import { INSTRUMENTS } from "@/lib/constants/instruments";
 import { formatPrice } from "@/lib/formatters";
 import { cn } from "@/lib/utils";
 import { SetupStatusActions } from "@/components/setups/SetupStatusActions";
 import { EditSetupModal } from "@/components/setups/EditSetupModal";
+import { ActiveTradeProgressGauge } from "@/components/setups/ActiveTradeProgressGauge";
 
 const STATUS_CONFIG: Record<SetupStatus, { label: string; icon: LucideIcon; color: string }> = {
   WAITING_FOR_CONFIRMATION: { label: "Waiting", icon: Clock, color: "text-amber-500 bg-amber-500/10" },
@@ -18,7 +20,7 @@ const STATUS_CONFIG: Record<SetupStatus, { label: string; icon: LucideIcon; colo
   EXPIRED: { label: "Expired", icon: Clock, color: "text-slate-500 bg-slate-500/10" },
 };
 
-export function SetupCard({ setup }: { setup: TradingSetup }) {
+export function SetupCard({ setup, quote }: { setup: TradingSetup; quote?: PriceQuote | null }) {
   const isLong = setup.direction === "LONG";
   const instrument = INSTRUMENTS.find((i) => i.symbol === setup.symbol);
   const decimals = instrument?.decimals ?? 5;
@@ -67,6 +69,9 @@ export function SetupCard({ setup }: { setup: TradingSetup }) {
             <p className="font-medium tabular-nums text-emerald-500">{formatPrice(setup.takeProfit1, decimals)}</p>
           </div>
         </div>
+
+        {/* Real-time Progress Gauge & Capital Protection Radar */}
+        <ActiveTradeProgressGauge setup={setup} quote={quote} />
 
         {/* Confluence Tags */}
         <div className="mt-4 flex flex-wrap gap-1.5">
