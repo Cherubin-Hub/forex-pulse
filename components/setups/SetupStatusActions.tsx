@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState, useEffect, useTransition } from "react";
 import { 
   Play, 
   CheckCircle, 
@@ -8,12 +8,20 @@ import {
   Ban, 
   Trash2, 
   Loader2,
-  ShieldCheck
+  ShieldCheck,
+  Award,
 } from "lucide-react";
 import type { SetupStatus, TradingSetup } from "@/types/setup";
 import { updateSetupStatus, deleteTradingSetup, setSetupToBreakeven } from "@/app/actions/setupActions";
 import { PreTradeGatekeeperModal } from "@/components/setups/PreTradeGatekeeperModal";
+import { TradePostMortemModal } from "@/components/setups/TradePostMortemModal";
+import {
+  loadAllPostMortems,
+  getGradeBadgeColor,
+  type TradePostMortem,
+} from "@/lib/postMortemUtils";
 import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 
 interface SetupStatusActionsProps {
   setup: TradingSetup;
@@ -22,6 +30,15 @@ interface SetupStatusActionsProps {
 export function SetupStatusActions({ setup }: SetupStatusActionsProps) {
   const [isPending, startTransition] = useTransition();
   const [isGatekeeperOpen, setIsGatekeeperOpen] = useState(false);
+  const [isPostMortemOpen, setIsPostMortemOpen] = useState(false);
+  const [review, setReview] = useState<TradePostMortem | null>(null);
+
+  // Sync post-mortem reviews from localStorage
+  useEffect(() => {
+    const allReviews = loadAllPostMortems();
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- Hydration match pattern
+    if (allReviews[setup.id]) setReview(allReviews[setup.id]);
+  }, [setup.id]);
 
   const handleTransition = (nextStatus: SetupStatus) => {
     startTransition(async () => {
@@ -145,16 +162,46 @@ export function SetupStatusActions({ setup }: SetupStatusActionsProps) {
     );
   }
 
-  // For completed or historical setups, provide clean deletion option
+  // Completed or historical setups (TP_REACHED, SL_HIT, INVALIDATED, EXPIRED)
   return (
-    <Button
-      size="sm"
-      variant="ghost"
-      className="h-7 w-7 p-0 text-muted-foreground hover:text-destructive ml-auto"
-      onClick={handleDelete}
-      title="Delete Setup"
-    >
-      <Trash2 className="h-3.5 w-3.5" />
-    </Button>
+    <>
+      <div className="flex items-center gap-1.5 ml-auto">
+        {/* Post-Mortem Review Button */}
+        <Button
+          size="sm"
+          variant="outline"
+          onClick={() => setIsPostMortemOpen(true)}
+          className={cn(
+            "h-7 px-2 text-[11px] font-semibold gap-1 transition-colors",
+            review
+              ? getGradeBadgeColor(review.grade)
+              : "border-border text-muted-foreground hover:text-foreground"
+          )}
+          title="Log Trade Review & Process Grade"
+        >
+          <Award className="h-3 w-3" />
+          {review ? `Grade ${review.grade} (${review.disciplineScore}%)` : "Post-Mortem"}
+        </Button>
+
+        <Button
+          size="sm"
+          variant="ghost"
+          className="h-7 w-7 p-0 text-muted-foreground hover:text-destructive"
+          onClick={handleDelete}
+          title="Delete Setup"
+        >
+          <Trash2 className="h-3.5 w-3.5" />
+        </Button>
+      </div>
+
+      {/* Trade Post-Mortem Modal */}
+      <TradePostMortemModal
+        setup={setup}
+        isOpen={isPostMortemOpen}
+        onClose={() => setIsPostMortemOpen(false)}
+        existingReview={review}
+        onSave={(saved) => setReview(saved)}
+      />
+    </>
   );
 }
