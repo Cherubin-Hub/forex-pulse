@@ -2,6 +2,8 @@ import { CandlestickChart } from "lucide-react";
 import { getQuotes } from "@/lib/services/marketData";
 import { MarketsSummaryCards } from "@/components/market/MarketsSummaryCards";
 import { MarketsTable } from "@/components/market/MarketsTable";
+import { CurrencyStrengthMeter } from "@/components/market/CurrencyStrengthMeter";
+import { CorrelationHeatmap } from "@/components/market/CorrelationHeatmap";
 
 export default async function MarketsPage() {
   const quotes = await getQuotes();
@@ -16,7 +18,7 @@ export default async function MarketsPage() {
             Markets Watchlist
           </h2>
           <p className="text-sm text-muted-foreground mt-1">
-            Real-time price quotes, daily volatility ranges, and momentum across all tracked instruments.
+            Real-time price quotes, currency strength rankings, and cross-asset correlation intelligence.
           </p>
         </div>
       </div>
@@ -24,6 +26,16 @@ export default async function MarketsPage() {
       {/* Top Statistical Cards */}
       <section>
         <MarketsSummaryCards quotes={quotes} />
+      </section>
+
+      {/* Relative Currency Strength Leaderboard */}
+      <section>
+        <CurrencyStrengthMeter quotes={quotes} />
+      </section>
+
+      {/* Cross-Asset Correlation Matrix */}
+      <section>
+        <CorrelationHeatmap quotes={quotes} />
       </section>
 
       {/* Comprehensive Watchlist Table */}
