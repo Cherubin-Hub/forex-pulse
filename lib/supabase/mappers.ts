@@ -3,11 +3,16 @@ import type { TradingSetup } from "@/types/setup";
 import type { SessionReport, KeyLevelBrief } from "@/types/report";
 import type { EconomicEvent } from "@/types/calendar";
 import type { NewsArticle } from "@/types/news";
+import type { GoldDriver, KeyLevel } from "@/types/gold";
+import type { TechnicalAnalysis, Timeframe, IndicatorData } from "@/types/technical";
 
 type SetupRow = Database["public"]["Tables"]["trading_setups"]["Row"];
 type ReportRow = Database["public"]["Tables"]["session_reports"]["Row"];
 type EventRow = Database["public"]["Tables"]["economic_events"]["Row"];
 type NewsRow = Database["public"]["Tables"]["market_news"]["Row"];
+type GoldDriverRow = Database["public"]["Tables"]["gold_drivers"]["Row"];
+type GoldKeyLevelRow = Database["public"]["Tables"]["gold_key_levels"]["Row"];
+type TechnicalAnalysisRow = Database["public"]["Tables"]["technical_analysis"]["Row"];
 
 /**
  * Maps a Supabase snake_case setup row to our application's TradingSetup model.
@@ -85,5 +90,43 @@ export function mapRowToNews(row: NewsRow): NewsArticle {
     impact: row.impact,
     currencies: row.currencies ?? [],
     publishedAt: row.published_at,
+  };
+}
+
+/**
+ * Maps a Supabase snake_case gold driver row to our application's GoldDriver model.
+ */
+export function mapRowToGoldDriver(row: GoldDriverRow): GoldDriver {
+  return {
+    id: row.id,
+    name: row.name,
+    value: row.value,
+    change: Number(row.change),
+    correlation: row.correlation,
+    impact: row.impact,
+  };
+}
+
+/**
+ * Maps a Supabase snake_case gold key level row to our application's KeyLevel model.
+ */
+export function mapRowToKeyLevel(row: GoldKeyLevelRow): KeyLevel {
+  return {
+    id: row.id,
+    price: Number(row.price),
+    type: row.type,
+    strength: row.strength,
+    notes: row.notes ?? undefined,
+  };
+}
+
+/**
+ * Maps a Supabase snake_case technical analysis row to our application's TechnicalAnalysis model.
+ */
+export function mapRowToTechnicalAnalysis(row: TechnicalAnalysisRow): TechnicalAnalysis {
+  return {
+    symbol: row.symbol,
+    timeframes: (row.timeframes as unknown as Record<Timeframe, IndicatorData>) ?? {},
+    overallBias: row.overall_bias,
   };
 }
