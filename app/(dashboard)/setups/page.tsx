@@ -1,10 +1,14 @@
 import { getActiveSetups } from "@/lib/services/setups";
+import { getQuotes } from "@/lib/services/marketData";
 import { SetupGrid } from "@/components/setups/SetupGrid";
 import { CreateSetupModal } from "@/components/setups/CreateSetupModal";
 import { SetupRealtimeListener } from "@/components/setups/SetupRealtimeListener";
 
 export default async function SetupsPage() {
-  const setups = await getActiveSetups();
+  const [setups, quotes] = await Promise.all([
+    getActiveSetups(),
+    getQuotes(),
+  ]);
 
   return (
     <div className="space-y-6">
@@ -21,7 +25,7 @@ export default async function SetupsPage() {
         <CreateSetupModal />
       </div>
 
-      <SetupGrid setups={setups} />
+      <SetupGrid setups={setups} quotes={quotes} />
     </div>
   );
 }
