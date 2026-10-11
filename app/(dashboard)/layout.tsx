@@ -1,5 +1,6 @@
 import { Sidebar } from "@/components/layout/Sidebar";
 import { Header } from "@/components/layout/Header";
+import { CircuitBreakerBanner } from "@/components/layout/CircuitBreakerBanner";
 
 export default function DashboardLayout({
   children,
@@ -9,6 +10,7 @@ export default function DashboardLayout({
       <Sidebar />
       <div className="flex min-w-0 flex-1 flex-col">
         <Header />
+        <CircuitBreakerBanner />
         <main className="flex-1 p-6">{children}</main>
       </div>
     </div>
