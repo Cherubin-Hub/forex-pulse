@@ -3,6 +3,7 @@ import type { SessionType, MarketBias, VolatilityExpectation } from "./report";
 import type { EventImpact } from "./calendar";
 import type { NewsImpact } from "./news";
 import type { DataStatus } from "./market";
+import type { TrendDirection } from "./technical";
 
 export type Json =
   | string
@@ -165,6 +166,66 @@ export interface Database {
           created_at?: string;
         };
         Update: Partial<Database["public"]["Tables"]["market_news"]["Insert"]>;
+        Relationships: [];
+      };
+      gold_drivers: {
+        Row: {
+          id: string;
+          name: string;
+          value: string;
+          change: number;
+          correlation: "POSITIVE" | "NEGATIVE";
+          impact: "BULLISH" | "BEARISH" | "NEUTRAL";
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          name: string;
+          value: string;
+          change?: number;
+          correlation: "POSITIVE" | "NEGATIVE";
+          impact: "BULLISH" | "BEARISH" | "NEUTRAL";
+          created_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["gold_drivers"]["Insert"]>;
+        Relationships: [];
+      };
+      gold_key_levels: {
+        Row: {
+          id: string;
+          price: number;
+          type: "SUPPORT" | "RESISTANCE" | "PIVOT";
+          strength: "STRONG" | "MODERATE" | "WEAK";
+          notes: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          price: number;
+          type: "SUPPORT" | "RESISTANCE" | "PIVOT";
+          strength: "STRONG" | "MODERATE" | "WEAK";
+          notes?: string | null;
+          created_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["gold_key_levels"]["Insert"]>;
+        Relationships: [];
+      };
+      technical_analysis: {
+        Row: {
+          id: string;
+          symbol: string;
+          timeframes: Json;
+          overall_bias: TrendDirection;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          symbol: string;
+          timeframes: Json;
+          overall_bias: TrendDirection;
+          updated_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["technical_analysis"]["Insert"]>;
         Relationships: [];
       };
     };
