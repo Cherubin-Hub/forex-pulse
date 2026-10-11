@@ -1,0 +1,16 @@
+{
+  "crons": [
+    {
+      "path": "/api/cron/daily-report?session=ASIAN_OPEN",
+      "schedule": "0 0 * * 1-5"
+    },
+    {
+      "path": "/api/cron/daily-report?session=LONDON_OPEN",
+      "schedule": "0 7 * * 1-5"
+    },
+    {
+      "path": "/api/cron/daily-report?session=NY_OPEN",
+      "schedule": "0 12 * * 1-5"
+    }
+  ]
+}
