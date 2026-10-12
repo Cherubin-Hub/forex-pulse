@@ -9,7 +9,7 @@ export default async function RiskPage() {
   const activeSetups = await getActiveSetups();
 
   return (
-    <div className="space-y-6 max-w-6xl">
+    <div className="space-y-6 w-full">
       {/* Page Title */}
       <div className="flex items-center justify-between border-b border-border pb-4">
         <div>

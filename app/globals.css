@@ -81,6 +81,11 @@
   --sidebar-accent-foreground: oklch(0.205 0 0);
   --sidebar-border: oklch(0.922 0 0);
   --sidebar-ring: oklch(0.708 0 0);
+
+  /* Modern Glass & Brand Accent Tokens */
+  --accent-brand: oklch(0.65 0.24 264);
+  --glass-bg: oklch(1 0 0 / 60%);
+  --glass-border: oklch(0.922 0 0 / 80%);
 }
 
 .dark {
@@ -115,6 +120,11 @@
   --sidebar-accent-foreground: oklch(0.985 0 0);
   --sidebar-border: oklch(1 0 0 / 10%);
   --sidebar-ring: oklch(0.556 0 0);
+
+  /* Dark Mode Glass Tokens */
+  --accent-brand: oklch(0.72 0.20 264);
+  --glass-bg: oklch(0.205 0 0 / 50%);
+  --glass-border: oklch(1 0 0 / 8%);
 }
 
 @layer base {
@@ -126,5 +136,80 @@
   }
   html {
     @apply font-sans;
+  }
+}
+
+@layer utilities {
+  /* ── Glass Card Effect ── */
+  .glass {
+    background: var(--glass-bg);
+    border: 1px solid var(--glass-border);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+  }
+
+  /* ── Glow Effects ── */
+  .glow-primary {
+    box-shadow:
+      0 0 20px oklch(0.65 0.24 264 / 15%),
+      0 0 40px oklch(0.65 0.24 264 / 8%);
+  }
+  .glow-success {
+    box-shadow:
+      0 0 20px oklch(0.72 0.19 155 / 15%),
+      0 0 40px oklch(0.72 0.19 155 / 8%);
+  }
+  .glow-danger {
+    box-shadow:
+      0 0 20px oklch(0.63 0.21 25 / 15%),
+      0 0 40px oklch(0.63 0.21 25 / 8%);
+  }
+
+  /* ── Shimmer Loading Animation ── */
+  .shimmer {
+    background: linear-gradient(
+      90deg,
+      var(--muted) 25%,
+      oklch(from var(--muted) l c h / 50%) 50%,
+      var(--muted) 75%
+    );
+    background-size: 200% 100%;
+    animation: shimmer 1.5s ease-in-out infinite;
+  }
+
+  @keyframes shimmer {
+    0% { background-position: 200% 0; }
+    100% { background-position: -200% 0; }
+  }
+
+  /* ── Financial Tabular Numbers ── */
+  .financial-num {
+    font-family: var(--font-geist-mono);
+    font-variant-numeric: tabular-nums;
+    letter-spacing: -0.02em;
+  }
+}
+
+/* ── High-Visibility Focus Rings ── */
+:focus-visible {
+  outline: 2px solid var(--accent-brand);
+  outline-offset: 2px;
+}
+
+/* ── Vestibular Safety (Prefers-Reduced-Motion) ── */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  ::before,
+  ::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+
+  .animate-ping,
+  .animate-pulse,
+  .shimmer {
+    animation: none !important;
   }
 }

@@ -27,7 +27,8 @@ export default async function DashboardPage() {
   }));
 
   return (
-    <div className="space-y-6 max-w-6xl">
+    /* 👇 1. REMOVED max-w-6xl, replaced with w-full */
+    <div className="space-y-6 w-full">
       {/* 1. Executive Briefing Bar */}
       <ExecutiveBriefingBar activeSetups={setups} events={events} />
 
@@ -48,11 +49,11 @@ export default async function DashboardPage() {
             View All Setups ({setups.length}) <ArrowRight className="h-3.5 w-3.5" />
           </Link>
         </div>
-        <SetupGrid setups={setups.slice(0, 3)} />
+        <SetupGrid setups={setups.slice(0, 4)} />
       </section>
 
-      {/* 5. Two-Column Intelligence Grid */}
-      <div className="grid gap-6 lg:grid-cols-[1fr_360px]">
+      {/* 5. Two-Column Intelligence Grid (Expands to fill ultra-wide screens) */}
+      <div className="grid gap-6 lg:grid-cols-[1fr_360px] xl:grid-cols-[1fr_400px] 2xl:grid-cols-[1fr_440px]">
         {/* Left Column: Watchlist Overview */}
         <section className="space-y-3">
           <div className="flex items-center justify-between">

@@ -10,7 +10,7 @@ export default async function TechnicalPage() {
   ]);
 
   return (
-    <div className="space-y-6 max-w-6xl">
+    <div className="space-y-6 w-full">
       <div className="flex items-center justify-between border-b border-border pb-4">
         <div>
           <h2 className="text-2xl font-bold tracking-tight flex items-center gap-2">

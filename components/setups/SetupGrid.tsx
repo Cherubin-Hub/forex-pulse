@@ -26,7 +26,8 @@ export function SetupGrid({ setups, quotes = [] }: SetupGridProps) {
   }
 
   return (
-    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+    /* 👇 Added 2xl:grid-cols-4 for widescreen display */
+    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4">
       {setups.map((setup) => (
         <SetupCard
           key={setup.id}
