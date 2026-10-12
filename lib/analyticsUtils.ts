@@ -1,4 +1,4 @@
-import type { TradingSetup, TradeDirection } from "@/types/setup";
+import type { TradingSetup } from "@/types/setup";
 
 export interface SetupAnalytics {
   totalTrades: number;

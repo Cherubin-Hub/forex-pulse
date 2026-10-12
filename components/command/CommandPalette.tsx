@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo, useRef } from "react";
+import { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { useTheme } from "next-themes";
 import { Search, ArrowRight } from "lucide-react";
@@ -42,17 +42,37 @@ export function CommandPalette({ isOpen, onClose, setups = [] }: CommandPaletteP
 
   // Reset index when query changes
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- Reset active index on search
     setSelectedIndex(0);
   }, [query]);
 
   // Focus input on open
   useEffect(() => {
     if (isOpen) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- Reset query state on modal open
       setQuery("");
       setSelectedIndex(0);
       setTimeout(() => inputRef.current?.focus(), 50);
     }
   }, [isOpen]);
+
+  const executeCommand = useCallback((item: CommandItem) => {
+    onClose();
+
+    if (item.actionKey === "TOGGLE_THEME") {
+      setTheme(theme === "dark" ? "light" : "dark");
+      return;
+    }
+
+    if (item.actionKey === "EXPORT_CSV") {
+      exportSetupsToCSV(setups);
+      return;
+    }
+
+    if (item.href) {
+      router.push(item.href);
+    }
+  }, [onClose, theme, setTheme, setups, router]);
 
   // Keyboard navigation listener (ArrowUp, ArrowDown, Enter, Escape)
   useEffect(() => {
@@ -76,25 +96,7 @@ export function CommandPalette({ isOpen, onClose, setups = [] }: CommandPaletteP
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [isOpen, flatItems, selectedIndex, onClose]);
-
-  const executeCommand = (item: CommandItem) => {
-    onClose();
-
-    if (item.actionKey === "TOGGLE_THEME") {
-      setTheme(theme === "dark" ? "light" : "dark");
-      return;
-    }
-
-    if (item.actionKey === "EXPORT_CSV") {
-      exportSetupsToCSV(setups);
-      return;
-    }
-
-    if (item.href) {
-      router.push(item.href);
-    }
-  };
+  }, [isOpen, flatItems, selectedIndex, onClose, executeCommand]);
 
   if (!isOpen) return null;
 

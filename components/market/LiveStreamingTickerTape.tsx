@@ -10,8 +10,14 @@ import { buildTickerFeed, type TickerItemData } from "@/lib/tickerUtils";
 import { formatPrice } from "@/lib/formatters";
 import { cn } from "@/lib/utils";
 
-export function LiveStreamingTickerTape() {
-  const [quotes, setQuotes] = useState<PriceQuote[]>(MOCK_QUOTES);
+interface LiveStreamingTickerTapeProps {
+  initialQuotes?: PriceQuote[];
+}
+
+export function LiveStreamingTickerTape({ initialQuotes }: LiveStreamingTickerTapeProps) {
+  const [quotes, setQuotes] = useState<PriceQuote[]>(() => {
+    return initialQuotes && initialQuotes.length > 0 ? initialQuotes : MOCK_QUOTES;
+  });
   const [prevPrices, setPrevPrices] = useState<Record<string, number>>({});
   const [flashingSymbols, setFlashingSymbols] = useState<Record<string, "UP" | "DOWN">>({});
   const [isPaused, setIsPaused] = useState(false);

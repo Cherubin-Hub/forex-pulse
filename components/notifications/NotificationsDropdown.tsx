@@ -4,6 +4,8 @@ import { useState, useMemo, useEffect } from "react";
 import Link from "next/link";
 import { Bell, Flame, Target, ShieldAlert, CheckCheck, ExternalLink } from "lucide-react";
 import type { SystemNotification, NotificationType } from "@/types/notification";
+import type { EconomicEvent } from "@/types/calendar";
+import type { TradingSetup } from "@/types/setup";
 import { useNow } from "@/hooks/useNow";
 import { generateSystemNotifications } from "@/lib/notificationUtils";
 import { MOCK_EVENTS } from "@/lib/mock/events";
@@ -13,17 +15,30 @@ import { cn } from "@/lib/utils";
 
 type FilterTab = "ALL" | "NEWS_RISK" | "SETUP_STATUS" | "RISK_WARNING";
 
-export function NotificationsDropdown() {
+interface NotificationsDropdownProps {
+  events?: EconomicEvent[];
+  setups?: TradingSetup[];
+}
+
+export function NotificationsDropdown({ events, setups }: NotificationsDropdownProps) {
   const now = useNow();
   const [isOpen, setIsOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<FilterTab>("ALL");
   const [readIds, setReadIds] = useState<Set<string>>(new Set<string>());
 
+  const resolvedEvents = useMemo(() => {
+    return events && events.length > 0 ? events : MOCK_EVENTS;
+  }, [events]);
+
+  const resolvedSetups = useMemo(() => {
+    return setups && setups.length > 0 ? setups : MOCK_ACTIVE_SETUPS;
+  }, [setups]);
+
   // Generate dynamic system alerts
   const rawNotifications: SystemNotification[] = useMemo(() => {
     if (!now) return [];
-    return generateSystemNotifications(MOCK_EVENTS, MOCK_ACTIVE_SETUPS, now);
-  }, [now]);
+    return generateSystemNotifications(resolvedEvents, resolvedSetups, now);
+  }, [now, resolvedEvents, resolvedSetups]);
 
   // Synchronize read states
   const notifications: SystemNotification[] = useMemo(() => {

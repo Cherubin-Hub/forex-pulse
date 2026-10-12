@@ -13,6 +13,7 @@ import {
   X,
 } from "lucide-react";
 import type { TradingSetup } from "@/types/setup";
+import type { EconomicEvent } from "@/types/calendar";
 import { useSettings } from "@/hooks/useSettings";
 import { useNow } from "@/hooks/useNow";
 import { MOCK_EVENTS } from "@/lib/mock/events";
@@ -25,6 +26,8 @@ interface PreTradeGatekeeperModalProps {
   isOpen: boolean;
   onClose: () => void;
   onConfirm: () => void;
+  events?: EconomicEvent[];
+  activeSetups?: TradingSetup[];
 }
 
 export function PreTradeGatekeeperModal({
@@ -32,6 +35,8 @@ export function PreTradeGatekeeperModal({
   isOpen,
   onClose,
   onConfirm,
+  events,
+  activeSetups,
 }: PreTradeGatekeeperModalProps) {
   const { settings } = useSettings();
   const now = useNow();
@@ -43,10 +48,18 @@ export function PreTradeGatekeeperModal({
   const [affirmedRisk, setAffirmedRisk] = useState(false);
   const [overrideAcknowledged, setOverrideAcknowledged] = useState(false);
 
+  const auditEvents = useMemo(() => {
+    return events && events.length > 0 ? events : MOCK_EVENTS;
+  }, [events]);
+
+  const auditSetups = useMemo(() => {
+    return activeSetups && activeSetups.length > 0 ? activeSetups : MOCK_ACTIVE_SETUPS;
+  }, [activeSetups]);
+
   const audit = useMemo(() => {
     if (!now) return null;
-    return evaluatePreTradeAudit(setup, MOCK_EVENTS, MOCK_ACTIVE_SETUPS, settings, now);
-  }, [setup, settings, now]);
+    return evaluatePreTradeAudit(setup, auditEvents, auditSetups, settings, now);
+  }, [setup, auditEvents, auditSetups, settings, now]);
 
   if (!isOpen) return null;
 

@@ -26,14 +26,6 @@ export function getUpcomingEvents(
   return events.filter((event) => getEventTiming(event, now, windows) !== "RELEASED").slice(0, limit);
 }
 
-export function getActiveNewsRisks(events: EconomicEvent[], now: Date, windows: NewsWindows): EconomicEvent[] {
-  return events.filter((event) => {
-    if (event.impact !== "HIGH") return false;
-    const timing = getEventTiming(event, now, windows);
-    return timing === "IMMINENT" || timing === "JUST_RELEASED";
-  });
-}
-
 /** Which of our instruments contain this currency? USD -> EUR/USD, USD/JPY, XAU/USD... */
 export function getAffectedInstruments(currency: string): string[] {
   return INSTRUMENTS.filter(
@@ -119,25 +111,4 @@ export function calculateCalendarWeeklyMetrics(events: EconomicEvent[]): Calenda
     primaryCurrency,
     primaryCurrencyCount,
   };
-}
-
-/**
- * Analyzes whether an actual release beat or missed forecast numbers.
- */
-export function evaluateSurprise(actual: string | null, forecast: string | null): "BEAT" | "MISS" | "IN_LINE" | null {
-  if (!actual || !forecast) return null;
-
-  const parseNum = (str: string) => {
-    const clean = str.replace(/[^0-9.-]/g, "");
-    const val = parseFloat(clean);
-    return isNaN(val) ? null : val;
-  };
-
-  const actVal = parseNum(actual);
-  const fcVal = parseNum(forecast);
-
-  if (actVal === null || fcVal === null) return null;
-  if (actVal > fcVal) return "BEAT";
-  if (actVal < fcVal) return "MISS";
-  return "IN_LINE";
 }

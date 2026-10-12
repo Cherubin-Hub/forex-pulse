@@ -29,7 +29,7 @@ export function AnimatedNumber({
   }, []);
 
   const initial = value ?? 0;
-  const spring = useSpring(prevValue.current, counterSpring);
+  const spring = useSpring(initial, counterSpring);
 
   const display = useTransform(spring, (latest: number) => {
     const formatted = latest.toLocaleString("en-US", {

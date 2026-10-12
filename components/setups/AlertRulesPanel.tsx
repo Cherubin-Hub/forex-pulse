@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Bell, Plus, Trash2, CheckCircle2, Zap, Shield, AlertCircle } from "lucide-react";
+import { Bell, Plus, Trash2, CheckCircle2, Zap, Shield } from "lucide-react";
 import type { PriceAlert, AlertCondition, AlertAction } from "@/types/alert";
 import type { TradingSetup } from "@/types/setup";
 import { getSavedAlerts, saveAlerts } from "@/lib/services/alertEngine";
