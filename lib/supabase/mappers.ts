@@ -5,6 +5,7 @@ import type { EconomicEvent } from "@/types/calendar";
 import type { NewsArticle } from "@/types/news";
 import type { GoldDriver, KeyLevel } from "@/types/gold";
 import type { TechnicalAnalysis, Timeframe, IndicatorData } from "@/types/technical";
+import type { SystemNotification } from "@/types/notification";
 
 type SetupRow = Database["public"]["Tables"]["trading_setups"]["Row"];
 type ReportRow = Database["public"]["Tables"]["session_reports"]["Row"];
@@ -13,6 +14,7 @@ type NewsRow = Database["public"]["Tables"]["market_news"]["Row"];
 type GoldDriverRow = Database["public"]["Tables"]["gold_drivers"]["Row"];
 type GoldKeyLevelRow = Database["public"]["Tables"]["gold_key_levels"]["Row"];
 type TechnicalAnalysisRow = Database["public"]["Tables"]["technical_analysis"]["Row"];
+type NotificationRow = Database["public"]["Tables"]["notifications"]["Row"];
 
 /**
  * Maps a Supabase snake_case setup row to our application's TradingSetup model.
@@ -128,5 +130,24 @@ export function mapRowToTechnicalAnalysis(row: TechnicalAnalysisRow): TechnicalA
     symbol: row.symbol,
     timeframes: (row.timeframes as unknown as Record<Timeframe, IndicatorData>) ?? {},
     overallBias: row.overall_bias,
+  };
+}
+
+/**
+ * Maps a Supabase snake_case notification row to our application's SystemNotification model.
+ */
+export function mapRowToNotification(row: NotificationRow): SystemNotification {
+  return {
+    id: row.id,
+    userId: row.user_id,
+    type: row.type,
+    priority: row.priority,
+    title: row.title,
+    message: row.message,
+    symbol: row.symbol ?? undefined,
+    linkHref: row.link_href ?? undefined,
+    actionLabel: row.action_label ?? undefined,
+    read: row.read,
+    timestamp: row.created_at,
   };
 }
