@@ -6,7 +6,7 @@ export async function GET() {
     const supabase = await createServerSupabaseClient();
 
     // 1. Test ping / query against trading_setups
-    const { data: setups, error: setupsError } = await supabase
+    const { error: setupsError } = await supabase
       .from("trading_setups")
       .select("count", { count: "exact", head: true });
 

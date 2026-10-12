@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo } from "react";
-import { AlertOctagon, Clock, ShieldCheck, Flame } from "lucide-react";
+import { AlertOctagon, Clock, ShieldCheck } from "lucide-react";
 import type { EconomicEvent } from "@/types/calendar";
 import { useNow } from "@/hooks/useNow";
 import { getNextHighImpactEvent, getAffectedInstruments } from "@/lib/calendar";

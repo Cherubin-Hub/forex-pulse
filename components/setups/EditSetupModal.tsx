@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { useForm } from "react-hook-form";
+import { useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Pencil, X, Loader2, AlertCircle } from "lucide-react";
 import type { TradingSetup } from "@/types/setup";
@@ -20,7 +20,7 @@ export function EditSetupModal({ setup }: { setup: TradingSetup }) {
   const {
     register,
     handleSubmit,
-    watch,
+    control,
     formState: { errors },
   } = useForm<CreateSetupFormData>({
     resolver: zodResolver(createSetupSchema),
@@ -37,11 +37,17 @@ export function EditSetupModal({ setup }: { setup: TradingSetup }) {
     },
   });
 
-  const direction = watch("direction");
-  const entryMin = Number(watch("entryMin")) || 0;
-  const entryMax = Number(watch("entryMax")) || 0;
-  const stopLoss = Number(watch("stopLoss")) || 0;
-  const takeProfit1 = Number(watch("takeProfit1")) || 0;
+  const [watchedDirection, watchedEntryMin, watchedEntryMax, watchedStopLoss, watchedTakeProfit1] =
+    useWatch({
+      control,
+      name: ["direction", "entryMin", "entryMax", "stopLoss", "takeProfit1"],
+    });
+
+  const direction = watchedDirection ?? setup.direction;
+  const entryMin = Number(watchedEntryMin) || 0;
+  const entryMax = Number(watchedEntryMax) || 0;
+  const stopLoss = Number(watchedStopLoss) || 0;
+  const takeProfit1 = Number(watchedTakeProfit1) || 0;
 
   const currentRR = calculateRiskReward(
     direction,
