@@ -162,7 +162,7 @@ export function calculatePortfolioExposure(
   }
 
   const currencyExposures: CurrencyNetExposure[] = Object.entries(currencyScores)
-    .filter(([_, data]) => data.symbols.size > 0)
+    .filter(([, data]) => data.symbols.size > 0)
     .map(([currency, data]) => {
       let netDirection: "LONG" | "SHORT" | "NEUTRAL" = "NEUTRAL";
       if (data.net > 0) netDirection = "LONG";

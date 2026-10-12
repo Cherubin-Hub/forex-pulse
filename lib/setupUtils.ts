@@ -21,19 +21,3 @@ export function calculateRiskReward(
 
   return reward / risk;
 }
-
-/**
- * Validates if a setup passes the user's strict risk rules.
- */
-export function validateSetupRisk(
-  rr: number,
-  minAllowedRR: number
-): { isValid: boolean; reason?: string } {
-  if (rr < minAllowedRR) {
-    return {
-      isValid: false,
-      reason: `R:R of 1:${rr.toFixed(1)} is below your minimum rule of 1:${minAllowedRR}`,
-    };
-  }
-  return { isValid: true };
-}

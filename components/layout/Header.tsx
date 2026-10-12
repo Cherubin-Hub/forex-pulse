@@ -3,6 +3,8 @@
 import { useState, useEffect } from "react";
 import { usePathname } from "next/navigation";
 import { Search } from "lucide-react";
+import type { EconomicEvent } from "@/types/calendar";
+import type { TradingSetup } from "@/types/setup";
 import { NAV_SECTIONS } from "@/lib/constants/navigation";
 import { ThemeToggle } from "@/components/layout/ThemeToggle";
 import { MobileSidebar } from "@/components/layout/MobileSidebar";
@@ -16,7 +18,12 @@ function getPageTitle(pathname: string): string {
   return match?.title ?? "ForexPulse";
 }
 
-export function Header() {
+interface HeaderProps {
+  events?: EconomicEvent[];
+  setups?: TradingSetup[];
+}
+
+export function Header({ events, setups }: HeaderProps) {
   const pathname = usePathname();
   const title = getPageTitle(pathname);
   const [isCommandOpen, setIsCommandOpen] = useState(false);
@@ -57,7 +64,7 @@ export function Header() {
           </button>
 
           {/* Dynamic Notification Dispatch */}
-          <NotificationsDropdown />
+          <NotificationsDropdown events={events} setups={setups} />
           <ThemeToggle />
           <UserNav />
         </div>
@@ -67,6 +74,7 @@ export function Header() {
       <CommandPalette
         isOpen={isCommandOpen}
         onClose={() => setIsCommandOpen(false)}
+        setups={setups}
       />
     </>
   );

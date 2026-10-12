@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
 import { logout } from "@/app/actions/authActions";
 import { Button } from "@/components/ui/button";
 import {
@@ -12,10 +11,9 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { LogOut, User, Layers } from "lucide-react";
+import { LogOut, Layers } from "lucide-react";
 
 export function UserNav() {
-  const router = useRouter();
   const [gatewayEmail, setGatewayEmail] = useState<string | null>(null);
 
   useEffect(() => {

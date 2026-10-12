@@ -34,6 +34,7 @@ export function DatabaseSeedCard() {
   };
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- Initial client fetch on mount
     fetchHealth();
   }, []);
 

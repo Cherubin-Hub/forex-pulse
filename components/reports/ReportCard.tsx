@@ -1,16 +1,11 @@
 "use client";
 
 import { useTransition } from "react";
-import { motion } from "framer-motion";
 import { toast } from "sonner";
 import { 
   ShieldAlert, 
   Target, 
   Flame, 
-  Clock, 
-  ArrowUpRight, 
-  ArrowDownRight, 
-  Minus,
   Trash2,
   Loader2
 } from "lucide-react";
@@ -18,7 +13,7 @@ import type { SessionReport, MarketBias, VolatilityExpectation } from "@/types/r
 import { formatTimePHT } from "@/lib/formatters";
 import { deleteSessionReport } from "@/app/actions/reportActions";
 import { Button } from "@/components/ui/button";
-import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
+import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 
