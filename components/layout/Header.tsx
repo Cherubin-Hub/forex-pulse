@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { Search } from "lucide-react";
 import type { EconomicEvent } from "@/types/calendar";
 import type { TradingSetup } from "@/types/setup";
+import type { SystemNotification } from "@/types/notification";
 import { NAV_SECTIONS } from "@/lib/constants/navigation";
 import { ThemeToggle } from "@/components/layout/ThemeToggle";
 import { MobileSidebar } from "@/components/layout/MobileSidebar";
@@ -19,11 +20,12 @@ function getPageTitle(pathname: string): string {
 }
 
 interface HeaderProps {
+  notifications?: SystemNotification[];
   events?: EconomicEvent[];
   setups?: TradingSetup[];
 }
 
-export function Header({ events, setups }: HeaderProps) {
+export function Header({ notifications, events, setups }: HeaderProps) {
   const pathname = usePathname();
   const title = getPageTitle(pathname);
   const [isCommandOpen, setIsCommandOpen] = useState(false);
@@ -64,7 +66,11 @@ export function Header({ events, setups }: HeaderProps) {
           </button>
 
           {/* Dynamic Notification Dispatch */}
-          <NotificationsDropdown events={events} setups={setups} />
+          <NotificationsDropdown
+            initialNotifications={notifications}
+            events={events}
+            setups={setups}
+          />
           <ThemeToggle />
           <UserNav />
         </div>

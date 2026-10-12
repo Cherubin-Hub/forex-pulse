@@ -6,6 +6,7 @@ import { MOCK_EVENTS } from "@/lib/mock/events";
 import { MOCK_NEWS } from "@/lib/mock/news";
 import { MOCK_GOLD_DRIVERS, MOCK_KEY_LEVELS } from "@/lib/mock/gold";
 import { MOCK_TECHNICALS } from "@/lib/mock/technical";
+import { MOCK_NOTIFICATIONS } from "@/lib/mock/notifications";
 import type { Database, Json } from "@/types/database";
 
 function getAdminClient() {
@@ -32,7 +33,7 @@ export async function GET() {
   try {
     const supabase = getAdminClient();
 
-    const [setupsRes, reportsRes, eventsRes, newsRes, driversRes, levelsRes, techRes] = await Promise.all([
+    const [setupsRes, reportsRes, eventsRes, newsRes, driversRes, levelsRes, techRes, notifsRes] = await Promise.all([
       supabase.from("trading_setups").select("*", { count: "exact", head: true }),
       supabase.from("session_reports").select("*", { count: "exact", head: true }),
       supabase.from("economic_events").select("*", { count: "exact", head: true }),
@@ -40,6 +41,7 @@ export async function GET() {
       supabase.from("gold_drivers").select("*", { count: "exact", head: true }),
       supabase.from("gold_key_levels").select("*", { count: "exact", head: true }),
       supabase.from("technical_analysis").select("*", { count: "exact", head: true }),
+      supabase.from("notifications").select("*", { count: "exact", head: true }),
     ]);
 
     const latencyMs = Date.now() - start;
@@ -56,6 +58,7 @@ export async function GET() {
         gold_drivers: driversRes.count ?? 0,
         gold_key_levels: levelsRes.count ?? 0,
         technical_analysis: techRes.count ?? 0,
+        notifications: notifsRes.count ?? 0,
       },
     });
   } catch (err) {
@@ -162,9 +165,22 @@ export async function POST() {
     }));
     await supabase.from("technical_analysis").upsert(technicalsToInsert, { onConflict: "symbol" });
 
+    // 8. System Notifications
+    const notificationsToInsert = MOCK_NOTIFICATIONS.map((n) => ({
+      type: n.type,
+      priority: n.priority,
+      title: n.title,
+      message: n.message,
+      symbol: n.symbol ?? null,
+      link_href: n.linkHref ?? null,
+      action_label: n.actionLabel ?? null,
+      read: n.read,
+    }));
+    await supabase.from("notifications").insert(notificationsToInsert);
+
     return NextResponse.json({
       success: true,
-      message: `Database synchronized! Seeded 7 tables: Setups (${setupsToInsert.length}), Reports (${reportsToInsert.length}), Events (${eventsToInsert.length}), News (${newsToInsert.length}), Drivers (${driversToInsert.length}), Levels (${levelsToInsert.length}), Technicals (${technicalsToInsert.length}).`,
+      message: `Database synchronized! Seeded 8 tables: Setups (${setupsToInsert.length}), Reports (${reportsToInsert.length}), Events (${eventsToInsert.length}), News (${newsToInsert.length}), Drivers (${driversToInsert.length}), Levels (${levelsToInsert.length}), Technicals (${technicalsToInsert.length}), Notifications (${notificationsToInsert.length}).`,
     });
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : "Seeding failed";

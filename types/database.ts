@@ -4,6 +4,7 @@ import type { EventImpact } from "./calendar";
 import type { NewsImpact } from "./news";
 import type { DataStatus } from "./market";
 import type { TrendDirection } from "./technical";
+import type { NotificationType, NotificationPriority } from "./notification";
 
 export type Json =
   | string
@@ -226,6 +227,36 @@ export interface Database {
           updated_at?: string;
         };
         Update: Partial<Database["public"]["Tables"]["technical_analysis"]["Insert"]>;
+        Relationships: [];
+      };
+      notifications: {
+        Row: {
+          id: string;
+          user_id: string | null;
+          type: NotificationType;
+          priority: NotificationPriority;
+          title: string;
+          message: string;
+          symbol: string | null;
+          link_href: string | null;
+          action_label: string | null;
+          read: boolean;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id?: string | null;
+          type: NotificationType;
+          priority: NotificationPriority;
+          title: string;
+          message: string;
+          symbol?: string | null;
+          link_href?: string | null;
+          action_label?: string | null;
+          read?: boolean;
+          created_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["notifications"]["Insert"]>;
         Relationships: [];
       };
     };

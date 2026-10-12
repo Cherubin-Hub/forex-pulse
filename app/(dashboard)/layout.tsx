@@ -6,15 +6,17 @@ import { KeyboardShortcutsProvider } from "@/components/providers/KeyboardShortc
 import { getQuotes } from "@/lib/services/marketData";
 import { getEconomicEvents } from "@/lib/services/calendar";
 import { getActiveSetups, getHistorySetups } from "@/lib/services/setups";
+import { getNotifications } from "@/lib/services/notifications";
 
 export default async function DashboardLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
-  const [quotes, events, activeSetups, historySetups] = await Promise.all([
+  const [quotes, events, activeSetups, historySetups, notifications] = await Promise.all([
     getQuotes(),
     getEconomicEvents(),
     getActiveSetups(),
     getHistorySetups(),
+    getNotifications(),
   ]);
 
   const allSetups = [...activeSetups, ...historySetups];
@@ -24,7 +26,11 @@ export default async function DashboardLayout({
       <div className="flex min-h-screen bg-background">
         <Sidebar />
         <div className="flex min-w-0 flex-1 flex-col">
-          <Header events={events} setups={activeSetups} />
+          <Header
+            notifications={notifications}
+            events={events}
+            setups={activeSetups}
+          />
           <LiveStreamingTickerTape initialQuotes={quotes} />
           <CircuitBreakerBanner setups={allSetups} />
           <main className="flex-1 p-6">{children}</main>

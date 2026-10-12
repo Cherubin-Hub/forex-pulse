@@ -2,67 +2,61 @@
 
 import { useState, useMemo, useEffect } from "react";
 import Link from "next/link";
-import { Bell, Flame, Target, ShieldAlert, CheckCheck, ExternalLink } from "lucide-react";
+import {
+  Bell,
+  Flame,
+  Target,
+  ShieldAlert,
+  Zap,
+  Globe,
+  CheckCheck,
+  ExternalLink,
+  Volume2,
+  VolumeX,
+  BellRing,
+} from "lucide-react";
 import type { SystemNotification, NotificationType } from "@/types/notification";
 import type { EconomicEvent } from "@/types/calendar";
 import type { TradingSetup } from "@/types/setup";
-import { useNow } from "@/hooks/useNow";
-import { generateSystemNotifications } from "@/lib/notificationUtils";
-import { MOCK_EVENTS } from "@/lib/mock/events";
-import { MOCK_ACTIVE_SETUPS } from "@/lib/mock/setups";
+import { useNotifications } from "@/hooks/useNotifications";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
-type FilterTab = "ALL" | "NEWS_RISK" | "SETUP_STATUS" | "RISK_WARNING";
+type FilterTab = "ALL" | "NEWS_RISK" | "SETUP_STATUS" | "RISK_WARNING" | "PRICE_SIGNAL";
 
 interface NotificationsDropdownProps {
+  initialNotifications?: SystemNotification[];
   events?: EconomicEvent[];
   setups?: TradingSetup[];
 }
 
-export function NotificationsDropdown({ events, setups }: NotificationsDropdownProps) {
-  const now = useNow();
+export function NotificationsDropdown({
+  initialNotifications,
+  events,
+  setups,
+}: NotificationsDropdownProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<FilterTab>("ALL");
-  const [readIds, setReadIds] = useState<Set<string>>(new Set<string>());
 
-  const resolvedEvents = useMemo(() => {
-    return events && events.length > 0 ? events : MOCK_EVENTS;
-  }, [events]);
-
-  const resolvedSetups = useMemo(() => {
-    return setups && setups.length > 0 ? setups : MOCK_ACTIVE_SETUPS;
-  }, [setups]);
-
-  // Generate dynamic system alerts
-  const rawNotifications: SystemNotification[] = useMemo(() => {
-    if (!now) return [];
-    return generateSystemNotifications(resolvedEvents, resolvedSetups, now);
-  }, [now, resolvedEvents, resolvedSetups]);
-
-  // Synchronize read states
-  const notifications: SystemNotification[] = useMemo(() => {
-    return rawNotifications.map((n: SystemNotification) => ({
-      ...n,
-      read: n.read || readIds.has(n.id),
-    }));
-  }, [rawNotifications, readIds]);
-
-  const unreadCount = notifications.filter((n: SystemNotification) => !n.read).length;
+  const {
+    notifications,
+    unreadCount,
+    markAsRead,
+    markAllAsRead,
+    isSoundEnabled,
+    toggleSound,
+    desktopPermission,
+    requestDesktopPermission,
+  } = useNotifications({
+    initialNotifications,
+    events,
+    setups,
+  });
 
   const filteredNotifications = useMemo(() => {
     if (activeTab === "ALL") return notifications;
     return notifications.filter((n: SystemNotification) => n.type === activeTab);
   }, [notifications, activeTab]);
-
-  const markAllAsRead = () => {
-    const allIds = new Set<string>(notifications.map((n: SystemNotification) => n.id));
-    setReadIds(allIds);
-  };
-
-  const markAsRead = (id: string) => {
-    setReadIds((prev) => new Set<string>(prev).add(id));
-  };
 
   // Close dropdown on outside click or escape key
   useEffect(() => {
@@ -81,6 +75,10 @@ export function NotificationsDropdown({ events, setups }: NotificationsDropdownP
         return <Target className="h-4 w-4 text-primary" />;
       case "RISK_WARNING":
         return <ShieldAlert className="h-4 w-4 text-amber-500" />;
+      case "PRICE_SIGNAL":
+        return <Zap className="h-4 w-4 text-sky-400" />;
+      case "SESSION_ALERT":
+        return <Globe className="h-4 w-4 text-emerald-400" />;
       default:
         return <Bell className="h-4 w-4 text-muted-foreground" />;
     }
@@ -99,7 +97,7 @@ export function NotificationsDropdown({ events, setups }: NotificationsDropdownP
         <Bell className="h-4 w-4" />
         {unreadCount > 0 && (
           <span className="absolute top-1.5 right-1.5 flex h-4 w-4 items-center justify-center rounded-full bg-rose-500 text-[10px] font-bold text-white font-mono animate-pulse">
-            {unreadCount}
+            {unreadCount > 9 ? "9+" : unreadCount}
           </span>
         )}
       </Button>
@@ -113,7 +111,7 @@ export function NotificationsDropdown({ events, setups }: NotificationsDropdownP
             onClick={() => setIsOpen(false)}
           />
 
-          <div className="absolute right-0 top-11 z-50 w-80 sm:w-96 rounded-xl border border-border bg-card p-3 shadow-xl space-y-3 animate-in fade-in zoom-in-95 duration-150">
+          <div className="absolute right-0 top-11 z-50 w-84 sm:w-96 rounded-xl border border-border bg-card p-3 shadow-xl space-y-3 animate-in fade-in zoom-in-95 duration-150">
             {/* Header */}
             <div className="flex items-center justify-between border-b border-border pb-2.5">
               <div className="flex items-center gap-2">
@@ -128,26 +126,55 @@ export function NotificationsDropdown({ events, setups }: NotificationsDropdownP
                 )}
               </div>
 
-              {unreadCount > 0 && (
+              {/* Utility actions: Sound chime toggle & Desktop Push */}
+              <div className="flex items-center gap-1.5">
                 <button
                   type="button"
-                  onClick={markAllAsRead}
-                  className="flex items-center gap-1 text-[11px] font-medium text-muted-foreground hover:text-foreground transition-colors"
+                  onClick={toggleSound}
+                  title={isSoundEnabled ? "Mute alert chimes" : "Enable alert chimes"}
+                  className="rounded p-1 text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
                 >
-                  <CheckCheck className="h-3 w-3" />
-                  Mark all read
+                  {isSoundEnabled ? (
+                    <Volume2 className="h-3.5 w-3.5 text-primary" />
+                  ) : (
+                    <VolumeX className="h-3.5 w-3.5 text-muted-foreground" />
+                  )}
                 </button>
-              )}
+
+                {desktopPermission !== "granted" && (
+                  <button
+                    type="button"
+                    onClick={requestDesktopPermission}
+                    title="Enable desktop notifications"
+                    className="rounded p-1 text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+                  >
+                    <BellRing className="h-3.5 w-3.5 text-amber-500" />
+                  </button>
+                )}
+
+                {unreadCount > 0 && (
+                  <button
+                    type="button"
+                    onClick={markAllAsRead}
+                    className="flex items-center gap-1 text-[11px] font-medium text-muted-foreground hover:text-foreground transition-colors ml-1"
+                  >
+                    <CheckCheck className="h-3 w-3" />
+                    Mark all read
+                  </button>
+                )}
+              </div>
             </div>
 
             {/* Filter Tabs */}
-            <div className="flex items-center gap-1 overflow-x-auto pb-1 text-xs">
+            <div className="flex items-center gap-1 overflow-x-auto pb-1 text-xs no-scrollbar">
               <button
                 type="button"
                 onClick={() => setActiveTab("ALL")}
                 className={cn(
-                  "px-2 py-0.5 rounded text-[11px] font-semibold transition-colors",
-                  activeTab === "ALL" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-muted"
+                  "px-2 py-0.5 rounded text-[11px] font-semibold transition-colors shrink-0",
+                  activeTab === "ALL"
+                    ? "bg-primary text-primary-foreground"
+                    : "text-muted-foreground hover:bg-muted"
                 )}
               >
                 All
@@ -156,8 +183,10 @@ export function NotificationsDropdown({ events, setups }: NotificationsDropdownP
                 type="button"
                 onClick={() => setActiveTab("NEWS_RISK")}
                 className={cn(
-                  "px-2 py-0.5 rounded text-[11px] font-semibold transition-colors",
-                  activeTab === "NEWS_RISK" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-muted"
+                  "px-2 py-0.5 rounded text-[11px] font-semibold transition-colors shrink-0",
+                  activeTab === "NEWS_RISK"
+                    ? "bg-primary text-primary-foreground"
+                    : "text-muted-foreground hover:bg-muted"
                 )}
               >
                 News
@@ -166,8 +195,10 @@ export function NotificationsDropdown({ events, setups }: NotificationsDropdownP
                 type="button"
                 onClick={() => setActiveTab("SETUP_STATUS")}
                 className={cn(
-                  "px-2 py-0.5 rounded text-[11px] font-semibold transition-colors",
-                  activeTab === "SETUP_STATUS" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-muted"
+                  "px-2 py-0.5 rounded text-[11px] font-semibold transition-colors shrink-0",
+                  activeTab === "SETUP_STATUS"
+                    ? "bg-primary text-primary-foreground"
+                    : "text-muted-foreground hover:bg-muted"
                 )}
               >
                 Setups
@@ -176,11 +207,25 @@ export function NotificationsDropdown({ events, setups }: NotificationsDropdownP
                 type="button"
                 onClick={() => setActiveTab("RISK_WARNING")}
                 className={cn(
-                  "px-2 py-0.5 rounded text-[11px] font-semibold transition-colors",
-                  activeTab === "RISK_WARNING" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-muted"
+                  "px-2 py-0.5 rounded text-[11px] font-semibold transition-colors shrink-0",
+                  activeTab === "RISK_WARNING"
+                    ? "bg-primary text-primary-foreground"
+                    : "text-muted-foreground hover:bg-muted"
                 )}
               >
                 Risk
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveTab("PRICE_SIGNAL")}
+                className={cn(
+                  "px-2 py-0.5 rounded text-[11px] font-semibold transition-colors shrink-0",
+                  activeTab === "PRICE_SIGNAL"
+                    ? "bg-primary text-primary-foreground"
+                    : "text-muted-foreground hover:bg-muted"
+                )}
+              >
+                Signals
               </button>
             </div>
 
@@ -197,13 +242,20 @@ export function NotificationsDropdown({ events, setups }: NotificationsDropdownP
                     onClick={() => markAsRead(notif.id)}
                     className={cn(
                       "p-2.5 rounded-lg transition-colors cursor-pointer space-y-1",
-                      notif.read ? "bg-transparent opacity-75 hover:bg-muted/30" : "bg-muted/40 hover:bg-muted/60"
+                      notif.read
+                        ? "bg-transparent opacity-75 hover:bg-muted/30"
+                        : "bg-muted/40 hover:bg-muted/60"
                     )}
                   >
                     <div className="flex items-start justify-between gap-2">
                       <div className="flex items-center gap-1.5 font-bold text-xs">
                         {getNotificationIcon(notif.type)}
-                        <span className={cn(notif.priority === "CRITICAL" && "text-rose-500")}>
+                        <span
+                          className={cn(
+                            notif.priority === "CRITICAL" && "text-rose-500",
+                            notif.priority === "HIGH" && "text-amber-500"
+                          )}
+                        >
                           {notif.title}
                         </span>
                       </div>
@@ -223,7 +275,8 @@ export function NotificationsDropdown({ events, setups }: NotificationsDropdownP
                           onClick={() => setIsOpen(false)}
                           className="text-[10px] text-primary font-semibold hover:underline inline-flex items-center gap-1"
                         >
-                          View Details <ExternalLink className="h-2.5 w-2.5" />
+                          {notif.actionLabel ?? "View Details"}{" "}
+                          <ExternalLink className="h-2.5 w-2.5" />
                         </Link>
                       </div>
                     )}

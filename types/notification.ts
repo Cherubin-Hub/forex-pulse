@@ -1,8 +1,15 @@
-export type NotificationType = "NEWS_RISK" | "SETUP_STATUS" | "SESSION_ALERT" | "RISK_WARNING";
+export type NotificationType =
+  | "NEWS_RISK"
+  | "SETUP_STATUS"
+  | "SESSION_ALERT"
+  | "RISK_WARNING"
+  | "PRICE_SIGNAL";
+
 export type NotificationPriority = "CRITICAL" | "HIGH" | "INFO";
 
-export type SystemNotification = {
+export interface SystemNotification {
   id: string;
+  userId?: string | null;
   type: NotificationType;
   priority: NotificationPriority;
   title: string;
@@ -11,4 +18,5 @@ export type SystemNotification = {
   read: boolean;
   linkHref?: string;
   symbol?: string;
-};
+  actionLabel?: string;
+}
