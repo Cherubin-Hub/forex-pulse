@@ -8,6 +8,7 @@ import { useNow } from "@/hooks/useNow";
 import { getNextHighImpactEvent } from "@/lib/calendar";
 import { formatDuration } from "@/lib/formatters";
 import { buttonVariants } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 
 interface ExecutiveBriefingBarProps {
@@ -22,16 +23,16 @@ export function ExecutiveBriefingBar({ activeSetups, events }: ExecutiveBriefing
   const isNoTradeZone = nextHigh ? nextHigh.msUntil <= 30 * 60 * 1000 : false;
 
   return (
-    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-xl border border-border bg-card p-4 shadow-sm">
+    <Card className="glass flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 shadow-sm">
       <div className="flex flex-wrap items-center gap-3">
         {/* Macro Threat Status */}
         {isNoTradeZone ? (
-          <div className="flex items-center gap-1.5 rounded-lg border border-rose-500/40 bg-rose-500/10 px-3 py-1.5 text-xs font-bold text-rose-600 dark:text-rose-400">
-            <AlertOctagon className="h-4 w-4 animate-pulse" />
+          <div className="flex items-center gap-2 rounded-lg border border-rose-500/40 bg-rose-500/10 px-3 py-1.5 text-xs font-bold text-rose-600 dark:text-rose-400 glow-danger animate-pulse">
+            <AlertOctagon className="h-4 w-4" />
             <span>NO-TRADE ZONE: {nextHigh?.event.title} in {formatDuration(nextHigh!.msUntil)}</span>
           </div>
         ) : (
-          <div className="flex items-center gap-1.5 rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-3 py-1.5 text-xs font-semibold text-emerald-600 dark:text-emerald-400">
+          <div className="flex items-center gap-2 rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-3 py-1.5 text-xs font-semibold text-emerald-600 dark:text-emerald-400 glow-success">
             <ShieldCheck className="h-4 w-4" />
             <span>Macro Horizon Clear</span>
           </div>
@@ -40,7 +41,7 @@ export function ExecutiveBriefingBar({ activeSetups, events }: ExecutiveBriefing
         {/* Portfolio Exposure Status */}
         <div className="flex items-center gap-2 text-xs text-muted-foreground border-l border-border pl-3">
           <span>Active Setups:</span>
-          <span className="font-mono font-bold text-foreground">{activeSetups.length} Open</span>
+          <span className="font-mono font-bold text-foreground financial-num">{activeSetups.length} Open</span>
         </div>
       </div>
 
@@ -50,7 +51,7 @@ export function ExecutiveBriefingBar({ activeSetups, events }: ExecutiveBriefing
           href="/risk"
           className={cn(
             buttonVariants({ variant: "outline", size: "sm" }),
-            "h-8 text-xs font-semibold gap-1"
+            "h-8 text-xs font-semibold gap-1 hover:border-primary/50"
           )}
         >
           Risk Radar
@@ -67,6 +68,6 @@ export function ExecutiveBriefingBar({ activeSetups, events }: ExecutiveBriefing
           Log Setup
         </Link>
       </div>
-    </div>
+    </Card>
   );
 }

@@ -6,6 +6,8 @@ import type { EconomicEvent } from "@/types/calendar";
 import { useNow } from "@/hooks/useNow";
 import { getNextHighImpactEvent, getAffectedInstruments } from "@/lib/calendar";
 import { formatClockPHT, formatDuration } from "@/lib/formatters";
+import { Card } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 
 interface EventCountdownRadarProps {
@@ -26,7 +28,7 @@ export function EventCountdownRadar({ events }: EventCountdownRadarProps) {
 
   if (!nextHigh) {
     return (
-      <div className="flex items-center gap-3 rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-4 text-emerald-600 dark:text-emerald-400">
+      <Card className="glass flex items-center gap-3 border-emerald-500/30 bg-emerald-500/10 p-4 text-emerald-600 dark:text-emerald-400 glow-success">
         <ShieldCheck className="h-5 w-5 shrink-0" />
         <div>
           <p className="text-sm font-semibold">Macro Horizon Clear</p>
@@ -34,7 +36,7 @@ export function EventCountdownRadar({ events }: EventCountdownRadarProps) {
             No further high-impact releases scheduled for the remainder of this session.
           </p>
         </div>
-      </div>
+      </Card>
     );
   }
 
@@ -43,82 +45,77 @@ export function EventCountdownRadar({ events }: EventCountdownRadarProps) {
   const affected = getAffectedInstruments(event.currency);
 
   return (
-    <div
+    <Card
       className={cn(
-        "rounded-xl border p-4 shadow-sm transition-all",
+        "glass p-4 shadow-sm transition-all duration-300",
         isImminent
-          ? "border-rose-500/40 bg-rose-500/10 dark:bg-rose-950/20"
-          : "border-border bg-card"
+          ? "border-rose-500/40 bg-rose-500/10 glow-danger"
+          : "hover:border-primary/40"
       )}
     >
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div className="space-y-1">
           <div className="flex items-center gap-2">
             {isImminent ? (
-              <span className="flex items-center gap-1.5 rounded-md bg-rose-500 px-2 py-0.5 text-[11px] font-bold text-white uppercase tracking-wider animate-pulse">
-                <AlertOctagon className="h-3.5 w-3.5" />
+              <Badge variant="destructive" className="animate-pulse">
+                <AlertOctagon className="h-3.5 w-3.5 mr-1" />
                 No-Trade Zone Active
-              </span>
+              </Badge>
             ) : (
-              <span className="flex items-center gap-1.5 rounded-md bg-primary/10 px-2 py-0.5 text-[11px] font-semibold text-primary uppercase tracking-wider">
-                <Flame className="h-3.5 w-3.5" />
-                Next High-Impact Catalyst
-              </span>
+              <Badge variant="warning">
+                <Clock className="h-3.5 w-3.5 mr-1" />
+                Catalyst Approaching
+              </Badge>
             )}
-            <span className="rounded bg-muted px-1.5 py-0.5 text-xs font-mono font-bold">
-              {event.currency}
+            <span className="text-xs text-muted-foreground">
+              {formatClockPHT(event.scheduledAt)} PHT
             </span>
           </div>
-
           <h3 className="text-base font-bold tracking-tight text-foreground">
-            {event.title}
+            {event.currency} · {event.title}
           </h3>
-
           <p className="text-xs text-muted-foreground">
-            Scheduled at {formatClockPHT(event.scheduledAt)} (PHT) • Forecast:{" "}
-            <span className="font-semibold text-foreground">{event.forecast ?? "N/A"}</span> • Previous:{" "}
-            <span className="font-semibold text-foreground">{event.previous ?? "N/A"}</span>
+            Forecast: <span className="font-mono font-medium text-foreground">{event.forecast ?? "—"}</span>
+            {" · "}
+            Previous: <span className="font-mono font-medium text-foreground">{event.previous ?? "—"}</span>
           </p>
         </div>
 
-        {/* Live Countdown Badge */}
-        <div className="flex flex-col sm:items-end justify-center shrink-0">
-          <div className="flex items-center gap-1.5">
-            <Clock className={cn("h-4 w-4", isImminent ? "text-rose-500" : "text-muted-foreground")} />
-            <span
-              className={cn(
-                "text-xl font-extrabold font-mono",
-                isImminent ? "text-rose-500" : "text-primary"
-              )}
-            >
-              in {formatDuration(msUntil)}
+        <div className="flex sm:flex-col items-center sm:items-end justify-between gap-1 border-t sm:border-t-0 border-border pt-2 sm:pt-0">
+          <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+            <span className="relative flex h-2 w-2">
+              <span className={cn("animate-ping absolute inline-flex h-full w-full rounded-full opacity-75", isImminent ? "bg-rose-400" : "bg-amber-400")} />
+              <span className={cn("relative inline-flex rounded-full h-2 w-2", isImminent ? "bg-rose-500" : "bg-amber-500")} />
             </span>
+            <span>Countdown:</span>
           </div>
-          <span className="text-[11px] text-muted-foreground">Time Until Release</span>
+          <span
+            className={cn(
+              "font-mono text-xl font-bold tracking-tight financial-num",
+              isImminent ? "text-rose-500 animate-pulse" : "text-amber-500"
+            )}
+          >
+            {formatDuration(msUntil)}
+          </span>
         </div>
       </div>
 
-      {/* Affected Instruments Chips */}
+      {/* Affected Instruments Strip */}
       {affected.length > 0 && (
-        <div className="mt-3 pt-3 border-t border-border/50 flex flex-wrap items-center gap-1.5">
-          <span className="text-[11px] font-medium text-muted-foreground mr-1">
-            Expected Volatility in:
-          </span>
-          {affected.map((pair) => (
-            <span
-              key={pair}
-              className={cn(
-                "rounded px-1.5 py-0.5 text-[10px] font-mono font-semibold border",
-                isImminent
-                  ? "border-rose-500/30 bg-rose-500/10 text-rose-600 dark:text-rose-400"
-                  : "border-border bg-muted/40 text-muted-foreground"
-              )}
-            >
-              {pair}
-            </span>
-          ))}
+        <div className="mt-3 flex items-center gap-2 border-t border-border/60 pt-2.5 text-xs text-muted-foreground">
+          <span className="text-[11px] font-semibold uppercase tracking-wider">Affected:</span>
+          <div className="flex flex-wrap gap-1">
+            {affected.map((sym) => (
+              <span
+                key={sym}
+                className="rounded border border-border bg-card/60 px-1.5 py-0.5 font-mono text-[10px] font-semibold text-foreground"
+              >
+                {sym}
+              </span>
+            ))}
+          </div>
         </div>
       )}
-    </div>
+    </Card>
   );
 }

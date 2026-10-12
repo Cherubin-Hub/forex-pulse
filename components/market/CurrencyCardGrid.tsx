@@ -6,7 +6,7 @@ import { CurrencyCard } from "@/components/market/CurrencyCard";
 
 const GRID_VARIANTS: Variants = {
   hidden: {},
-  visible: { transition: { staggerChildren: 0.06 } },
+  visible: { transition: { staggerChildren: 0.05 } },
 };
 
 export type CurrencyCardItem = {
@@ -20,7 +20,8 @@ export function CurrencyCardGrid({ items }: { items: CurrencyCardItem[] }) {
       variants={GRID_VARIANTS}
       initial="hidden"
       animate="visible"
-      className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4"
+      /* 👇 Responsive 2, 3, and 4-column flow on wide screens */
+      className="grid gap-4 sm:grid-cols-2 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4"
     >
       {items.map(({ instrument, quote }) => (
         <CurrencyCard key={instrument.symbol} instrument={instrument} quote={quote} />

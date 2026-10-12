@@ -38,7 +38,6 @@ We strictly separate data models, UI, and business logic to ensure an easy trans
    - Color code strict risk rules and impact data (Red = High Impact/Loss, Green = Won, Amber = Medium Impact/Warning).
 
 ## 🤖 AI Assistant Directives (CRITICAL)
-- **NO DIRECT CODE GENERATION:** The AI must NEVER overwrite or create files directly using tools.
 - **MANUAL CODING:** The AI must provide exact, copy-pasteable code blocks for the user to implement manually.
 - **EXPLANATIONS REQUIRED:** Every code block must be accompanied by a clear explanation of *why* it was written that way.
 - **STRICT TYPES:** Never use `any`. Always rely on defined TypeScript types.

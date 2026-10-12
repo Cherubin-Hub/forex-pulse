@@ -2,6 +2,7 @@
 
 import { useTransition } from "react";
 import { motion } from "framer-motion";
+import { toast } from "sonner";
 import { 
   ShieldAlert, 
   Target, 
@@ -17,24 +18,26 @@ import type { SessionReport, MarketBias, VolatilityExpectation } from "@/types/r
 import { formatTimePHT } from "@/lib/formatters";
 import { deleteSessionReport } from "@/app/actions/reportActions";
 import { Button } from "@/components/ui/button";
+import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 
-function getBiasBadge(bias: MarketBias) {
+function getBiasBadge(bias: MarketBias): { label: string; variant: "success" | "destructive" | "warning" | "info" | "neutral" } {
   switch (bias) {
     case "BULLISH_USD":
-      return { label: "Bullish USD", color: "bg-emerald-500/10 text-emerald-500 border-emerald-500/20" };
+      return { label: "Bullish USD", variant: "success" };
     case "BEARISH_USD":
-      return { label: "Bearish USD", color: "bg-rose-500/10 text-rose-500 border-rose-500/20" };
+      return { label: "Bearish USD", variant: "destructive" };
     case "RISK_OFF":
-      return { label: "Risk-Off Flight", color: "bg-amber-500/10 text-amber-500 border-amber-500/20" };
+      return { label: "Risk-Off Flight", variant: "warning" };
     case "RISK_ON":
-      return { label: "Risk-On Expansion", color: "bg-sky-500/10 text-sky-500 border-sky-500/20" };
+      return { label: "Risk-On Expansion", variant: "info" };
     default:
-      return { label: "Neutral / Ranging", color: "bg-slate-500/10 text-slate-500 border-slate-500/20" };
+      return { label: "Neutral / Ranging", variant: "neutral" };
   }
 }
 
-function getVolatilityBadge(vol: VolatilityExpectation) {
+function getVolatilityBadge(vol: VolatilityExpectation): { label: string; color: string } {
   switch (vol) {
     case "EXTREME":
       return { label: "Extreme Volatility", color: "text-rose-500" };
@@ -49,176 +52,98 @@ function getVolatilityBadge(vol: VolatilityExpectation) {
 
 export function ReportCard({ report }: { report: SessionReport }) {
   const [isDeleting, startDelete] = useTransition();
-  const biasBadge = getBiasBadge(report.bias);
-  const volBadge = getVolatilityBadge(report.volatility);
+  const bias = getBiasBadge(report.bias);
+  const vol = getVolatilityBadge(report.volatility);
 
   const handleDelete = () => {
     if (!confirm("Are you sure you want to delete this session report?")) return;
     startDelete(async () => {
       const result = await deleteSessionReport(report.id);
-      if (!result.success) {
-        alert(`Failed to delete: ${result.error}`);
+      if (result.success) {
+        toast.success("Session Report Deleted");
+      } else {
+        toast.error(`Failed to delete: ${result.error}`);
       }
     });
   };
 
   return (
-    <motion.article
-      initial={{ opacity: 0, y: 15 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.25 }}
-      className="space-y-6 rounded-xl border border-border bg-card p-6 shadow-sm"
-    >
-      {/* Header Meta */}
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between border-b border-border pb-4">
+    <Card className="glass shadow-sm space-y-6 p-6">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-border pb-4">
         <div>
           <div className="flex items-center gap-2">
-            <h3 className="text-xl font-bold tracking-tight">{report.title}</h3>
+            <span className="text-xs font-semibold text-primary uppercase tracking-wider">{report.session}</span>
+            <span className="text-muted-foreground">·</span>
+            <span className="text-xs text-muted-foreground financial-num">{formatTimePHT(report.timestamp)} PHT</span>
           </div>
-          <p className="flex items-center gap-1.5 text-xs text-muted-foreground mt-1">
-            <Clock className="h-3.5 w-3.5" />
-            Generated {formatTimePHT(report.timestamp)}
-          </p>
+          <h2 className="text-xl font-bold tracking-tight text-foreground mt-0.5">{report.title}</h2>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2">
-          <span className={cn("rounded-md border px-2.5 py-1 text-xs font-semibold", biasBadge.color)}>
-            {biasBadge.label}
-          </span>
-          <span className={cn("flex items-center gap-1 rounded-md border border-border bg-muted/50 px-2.5 py-1 text-xs font-semibold", volBadge.color)}>
+        <div className="flex items-center gap-2">
+          <Badge variant={bias.variant}>{bias.label}</Badge>
+          <span className={cn("text-xs font-semibold flex items-center gap-1", vol.color)}>
             <Flame className="h-3.5 w-3.5" />
-            {volBadge.label}
+            {vol.label}
           </span>
           <Button
-            size="sm"
+            size="icon-xs"
             variant="ghost"
-            className="h-8 w-8 p-0 text-muted-foreground hover:text-destructive"
             onClick={handleDelete}
             disabled={isDeleting}
-            title="Delete Session Report"
+            className="text-muted-foreground hover:text-destructive"
+            title="Delete Report"
           >
-            {isDeleting ? (
-              <Loader2 className="h-3.5 w-3.5 animate-spin" />
-            ) : (
-              <Trash2 className="h-3.5 w-3.5" />
-            )}
+            {isDeleting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}
           </Button>
         </div>
       </div>
 
       {/* Executive Summary */}
-      <div className="rounded-lg bg-muted/40 p-4 border border-border/60">
-        <h4 className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-1.5">
-          Executive Brief
-        </h4>
-        <p className="text-sm leading-relaxed text-foreground">
-          {report.executiveSummary}
-        </p>
+      <div className="space-y-2">
+        <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Executive Brief</h3>
+        <p className="text-sm leading-relaxed text-foreground/90">{report.executiveSummary}</p>
       </div>
 
-      {/* Grid: Macro Catalysts & Session Playbook */}
-      <div className="grid gap-6 md:grid-cols-2">
-        {/* Macro Catalysts */}
-        <div className="space-y-3">
-          <h4 className="flex items-center gap-2 text-sm font-semibold">
-            <span className="flex h-5 w-5 items-center justify-center rounded bg-primary/10 text-primary text-xs">⚡</span>
-            Key Macro Catalysts
-          </h4>
-          <ul className="space-y-2">
-            {report.macroCatalysts.map((catalyst, idx) => (
-              <li key={idx} className="flex items-start gap-2 text-xs text-muted-foreground leading-relaxed">
-                <span className="text-primary font-bold">•</span>
+      {/* Macro Catalysts */}
+      {report.macroCatalysts.length > 0 && (
+        <div className="space-y-2">
+          <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Macro Catalysts & Drivers</h3>
+          <ul className="space-y-1.5 text-xs text-foreground/80">
+            {report.macroCatalysts.map((catalyst, i) => (
+              <li key={i} className="flex items-start gap-2">
+                <span className="text-primary font-bold mt-0.5">•</span>
                 <span>{catalyst}</span>
               </li>
             ))}
           </ul>
         </div>
+      )}
 
-        {/* Execution Playbook */}
-        <div className="space-y-3">
-          <h4 className="flex items-center gap-2 text-sm font-semibold">
-            <Target className="h-4 w-4 text-primary" />
-            Session Playbook
+      {/* Focus Pairs & Risk Rule */}
+      <div className="grid sm:grid-cols-2 gap-4 rounded-lg bg-muted/30 p-4 border border-border">
+        <div className="space-y-1">
+          <h4 className="text-xs font-semibold text-muted-foreground flex items-center gap-1.5">
+            <Target className="h-3.5 w-3.5 text-primary" />
+            Focus Watchlist
           </h4>
-          
-          <div className="space-y-2.5 rounded-lg border border-border bg-card p-3 text-xs">
-            <div className="flex items-center justify-between">
-              <span className="text-muted-foreground">Focus Pairs:</span>
-              <div className="flex gap-1">
-                {report.playbook.focusPairs.map((p) => (
-                  <span key={p} className="rounded bg-muted px-1.5 py-0.5 font-mono font-semibold">
-                    {p}
-                  </span>
-                ))}
-              </div>
-            </div>
-
-            <div className="border-t border-border/60 pt-2">
-              <span className="font-semibold text-rose-500 flex items-center gap-1">
-                <ShieldAlert className="h-3.5 w-3.5" /> Risk Directive:
+          <div className="flex flex-wrap gap-1.5 pt-1">
+            {report.playbook.focusPairs.map((pair) => (
+              <span key={pair} className="rounded bg-background border border-border px-2 py-0.5 font-mono text-xs font-semibold">
+                {pair}
               </span>
-              <p className="text-muted-foreground mt-0.5">{report.playbook.riskRule}</p>
-            </div>
-
-            <div className="border-t border-border/60 pt-2">
-              <span className="font-semibold text-foreground">Setups in Play:</span>
-              <ul className="mt-1 space-y-1 text-muted-foreground">
-                {report.playbook.tradeOpportunities.map((op, i) => (
-                  <li key={i} className="flex items-start gap-1.5">
-                    <span className="text-sky-500">→</span>
-                    <span>{op}</span>
-                  </li>
-                ))}
-              </ul>
-            </div>
+            ))}
           </div>
         </div>
-      </div>
 
-      {/* Watchlist Key Levels Table */}
-      <div className="space-y-3 border-t border-border pt-4">
-        <h4 className="text-sm font-semibold">Session Key Pivot Levels</h4>
-        <div className="overflow-x-auto rounded-lg border border-border">
-          <table className="w-full text-left text-xs">
-            <thead className="bg-muted/50 text-muted-foreground">
-              <tr>
-                <th className="p-2.5 font-medium">Instrument</th>
-                <th className="p-2.5 font-medium">Support</th>
-                <th className="p-2.5 font-medium">Session Pivot</th>
-                <th className="p-2.5 font-medium">Resistance</th>
-                <th className="p-2.5 font-medium">Trend Bias</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-border">
-              {report.keyLevels.map((lvl) => {
-                const isBull = lvl.bias === "BULLISH";
-                const isBear = lvl.bias === "BEARISH";
-                return (
-                  <tr key={lvl.symbol} className="hover:bg-muted/20">
-                    <td className="p-2.5 font-semibold font-mono">{lvl.symbol}</td>
-                    <td className="p-2.5 font-mono text-emerald-500">{lvl.support}</td>
-                    <td className="p-2.5 font-mono font-medium">{lvl.pivot}</td>
-                    <td className="p-2.5 font-mono text-rose-500">{lvl.resistance}</td>
-                    <td className="p-2.5">
-                      <span className={cn(
-                        "inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[11px] font-medium",
-                        isBull && "text-emerald-500 bg-emerald-500/10",
-                        isBear && "text-rose-500 bg-rose-500/10",
-                        !isBull && !isBear && "text-muted-foreground bg-muted"
-                      )}>
-                        {isBull && <ArrowUpRight className="h-3 w-3" />}
-                        {isBear && <ArrowDownRight className="h-3 w-3" />}
-                        {!isBull && !isBear && <Minus className="h-3 w-3" />}
-                        {lvl.bias}
-                      </span>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
+        <div className="space-y-1">
+          <h4 className="text-xs font-semibold text-muted-foreground flex items-center gap-1.5">
+            <ShieldAlert className="h-3.5 w-3.5 text-amber-500" />
+            Risk Mandate
+          </h4>
+          <p className="text-xs text-foreground/90 pt-1 leading-snug">{report.playbook.riskRule}</p>
         </div>
       </div>
-    </motion.article>
+    </Card>
   );
 }

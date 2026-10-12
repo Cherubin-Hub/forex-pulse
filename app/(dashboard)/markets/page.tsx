@@ -9,7 +9,7 @@ export default async function MarketsPage() {
   const quotes = await getQuotes();
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-8 w-full">
       {/* Header */}
       <div className="flex items-center justify-between border-b border-border pb-4">
         <div>

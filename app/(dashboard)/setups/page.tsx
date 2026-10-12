@@ -3,6 +3,9 @@ import { getQuotes } from "@/lib/services/marketData";
 import { SetupGrid } from "@/components/setups/SetupGrid";
 import { CreateSetupModal } from "@/components/setups/CreateSetupModal";
 import { SetupRealtimeListener } from "@/components/setups/SetupRealtimeListener";
+import { SignalAutomationListener } from "@/components/setups/SignalAutomationListener";
+import { AlertRulesPanel } from "@/components/setups/AlertRulesPanel";
+import { MarketScannerWidget } from "@/components/setups/MarketScannerWidget";
 
 export default async function SetupsPage() {
   const [setups, quotes] = await Promise.all([
@@ -15,6 +18,9 @@ export default async function SetupsPage() {
       {/* Realtime WebSocket subscription */}
       <SetupRealtimeListener />
 
+      {/* Headless Signal & Automation Watcher */}
+      <SignalAutomationListener quotes={quotes} setups={setups} />
+
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between border-b border-border pb-4">
         <div>
           <h2 className="text-2xl font-bold tracking-tight">Active Setups</h2>
@@ -25,6 +31,13 @@ export default async function SetupsPage() {
         <CreateSetupModal />
       </div>
 
+      {/* Automated Strategy Scanner Engine */}
+      <MarketScannerWidget />
+
+      {/* Signal Automation & Custom Alerts Console */}
+      <AlertRulesPanel setups={setups} />
+
+      {/* Active Setups Grid */}
       <SetupGrid setups={setups} quotes={quotes} />
     </div>
   );
