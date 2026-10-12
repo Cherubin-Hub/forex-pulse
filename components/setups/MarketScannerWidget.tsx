@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useTransition, useRef } from "react";
+import { useState, useEffect, useTransition, useRef, useCallback } from "react";
 import { toast } from "sonner";
 import { 
   Cpu, 
@@ -39,7 +39,7 @@ export function MarketScannerWidget() {
     pollingIntervalMinutes: 0, // 0 = Manual on-demand
   });
 
-  const executeScan = (silent = false) => {
+  const executeScan = useCallback((silent = false) => {
     startScan(async () => {
       const res = await runMarketScanAction(config);
       setHasScanned(true);
@@ -65,7 +65,7 @@ export function MarketScannerWidget() {
         toast.error(res.error ?? "Market scanner failed.");
       }
     });
-  };
+  }, [config]);
 
   // Background Live Polling Timer
   useEffect(() => {
@@ -83,7 +83,7 @@ export function MarketScannerWidget() {
     }, intervalMs);
 
     return () => clearInterval(timerId);
-  }, [config]);
+  }, [config.pollingIntervalMinutes, executeScan]);
 
   const handleCommitSingle = async (opp: ScannedOpportunity) => {
     toast.loading(`Logging setup for ${opp.symbol}...`, { id: opp.id });
