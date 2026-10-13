@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { verifySSOToken } from "@/lib/sso/verifier";
 import { signSessionPayload } from "@/lib/sso/session";
 
+export const dynamic = "force-dynamic";
+
 export async function GET(request: NextRequest) {
   const searchParams = request.nextUrl.searchParams;
   const payloadBase64 = searchParams.get("payload");
