@@ -28,7 +28,7 @@ export async function login(formData: FormData) {
   redirect("/");
 }
 
-export async function logout(redirectToGateway = false) {
+export async function logout(redirectToGateway = true) {
   const supabase = await createServerSupabaseClient();
   await supabase.auth.signOut();
   
@@ -38,9 +38,6 @@ export async function logout(redirectToGateway = false) {
 
   revalidatePath("/", "layout");
 
-  if (redirectToGateway) {
-    redirect("http://localhost:3000/login");
-  } else {
-    redirect("/login");
-  }
+  const gatewayUrl = process.env.NEXT_PUBLIC_GATEWAY_URL || "http://localhost:3000";
+  redirect(`${gatewayUrl}/login`);
 }

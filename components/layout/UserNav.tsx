@@ -22,8 +22,19 @@ export function UserNav() {
     const sessionCookie = cookies.find((c) => c.startsWith("fp_gateway_session="));
     if (sessionCookie) {
       try {
-        const decoded = decodeURIComponent(sessionCookie.split("=")[1]);
-        const data = JSON.parse(decoded) as { email?: string };
+        const rawValue = decodeURIComponent(sessionCookie.split("=")[1] || "");
+        let jsonStr = "";
+        if (rawValue.includes(".")) {
+          // New signed format: base64urlPayload.signature
+          const base64Url = rawValue.split(".")[0];
+          const base64 = base64Url.replace(/-/g, "+").replace(/_/g, "/");
+          jsonStr = atob(base64);
+        } else {
+          // Legacy plain JSON
+          jsonStr = rawValue;
+        }
+
+        const data = JSON.parse(jsonStr) as { email?: string };
         if (data.email) {
           // eslint-disable-next-line react-hooks/set-state-in-effect -- Hydration match pattern
           setGatewayEmail(data.email);
@@ -33,6 +44,8 @@ export function UserNav() {
       }
     }
   }, []);
+
+  const gatewayUrl = process.env.NEXT_PUBLIC_GATEWAY_URL || "http://localhost:3000";
 
   return (
     <DropdownMenu>
@@ -62,7 +75,7 @@ export function UserNav() {
         {/* Gateway Hub Quick Switcher */}
         <DropdownMenuItem
           onClick={() => {
-            window.location.href = "http://localhost:3000/portal";
+            window.location.href = `${gatewayUrl}/portal`;
           }}
         >
           <Layers className="mr-2 h-4 w-4 text-emerald-500" />
@@ -79,20 +92,6 @@ export function UserNav() {
         >
           <LogOut className="mr-2 h-4 w-4" />
           <span>Sign Out of Hub</span>
-        </DropdownMenuItem>
-
-        <DropdownMenuSeparator />
-
-        <DropdownMenuItem
-          variant="destructive"
-          onClick={async () => {
-            // Clear gateway session cookie on logout
-            document.cookie = "fp_gateway_session=; path=/; max-age=0;";
-            await logout();
-          }}
-        >
-          <LogOut className="mr-2 h-4 w-4" />
-          <span>Sign Out</span>
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>

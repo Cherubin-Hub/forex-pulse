@@ -1,10 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { verifySSOToken } from "@/lib/sso/verifier";
+import { signSessionPayload } from "@/lib/sso/session";
 
 export async function GET(request: NextRequest) {
   const searchParams = request.nextUrl.searchParams;
   const payloadBase64 = searchParams.get("payload");
   const signature = searchParams.get("sig");
+  const returnTo = searchParams.get("returnTo") || "/";
 
   if (!payloadBase64 || !signature) {
     return NextResponse.json(
@@ -23,19 +25,22 @@ export async function GET(request: NextRequest) {
     );
   }
 
-  // 2. Prepare redirect response to the main dashboard
-  const destinationUrl = new URL("/", request.url);
+  // 2. Prepare redirect response to the target dashboard or requested deep-link
+  const sanitizedReturnTo = returnTo.startsWith("/") ? returnTo : "/";
+  const destinationUrl = new URL(sanitizedReturnTo, request.url);
   const response = NextResponse.redirect(destinationUrl);
 
-  // 3. Issue the authenticated session cookie
+  // 3. Issue cryptographically signed tamper-proof session cookie
+  const signedSession = await signSessionPayload({
+    email: result.payload.email,
+    userId: result.payload.userId,
+    authenticatedVia: "pulse-gateway",
+    issuedAt: Date.now(),
+  });
+
   response.cookies.set({
     name: "fp_gateway_session",
-    value: JSON.stringify({
-      email: result.payload.email,
-      userId: result.payload.userId,
-      authenticatedVia: "pulse-gateway",
-      issuedAt: result.payload.timestamp,
-    }),
+    value: signedSession,
     path: "/",
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
