@@ -4,6 +4,7 @@ import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { cookies } from "next/headers";
+import { normalizeBaseUrl } from "@/lib/sso/session";
 
 export async function login(formData: FormData) {
   const email = formData.get("email") as string;
@@ -38,6 +39,7 @@ export async function logout(redirectToGateway = true) {
 
   revalidatePath("/", "layout");
 
-  const gatewayUrl = process.env.NEXT_PUBLIC_GATEWAY_URL || "http://localhost:3000";
+  const rawGatewayUrl = process.env.NEXT_PUBLIC_GATEWAY_URL || "http://localhost:3000";
+  const gatewayUrl = normalizeBaseUrl(rawGatewayUrl, "http://localhost:3000");
   redirect(`${gatewayUrl}/login`);
 }

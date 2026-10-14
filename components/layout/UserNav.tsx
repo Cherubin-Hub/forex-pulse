@@ -12,6 +12,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { LogOut, Layers } from "lucide-react";
+import { normalizeBaseUrl } from "@/lib/sso/session";
 
 export function UserNav() {
   const [gatewayEmail, setGatewayEmail] = useState<string | null>(null);
@@ -45,7 +46,8 @@ export function UserNav() {
     }
   }, []);
 
-  const gatewayUrl = process.env.NEXT_PUBLIC_GATEWAY_URL || "http://localhost:3000";
+  const rawGatewayUrl = process.env.NEXT_PUBLIC_GATEWAY_URL || "http://localhost:3000";
+  const gatewayUrl = normalizeBaseUrl(rawGatewayUrl, "http://localhost:3000");
 
   return (
     <DropdownMenu>

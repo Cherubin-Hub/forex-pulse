@@ -33,22 +33,29 @@ export async function GET(request: NextRequest) {
   const response = NextResponse.redirect(destinationUrl);
 
   // 3. Issue cryptographically signed tamper-proof session cookie
-  const signedSession = await signSessionPayload({
-    email: result.payload.email,
-    userId: result.payload.userId,
-    authenticatedVia: "pulse-gateway",
-    issuedAt: Date.now(),
-  });
+  try {
+    const signedSession = await signSessionPayload({
+      email: result.payload.email,
+      userId: result.payload.userId,
+      authenticatedVia: "pulse-gateway",
+      issuedAt: Date.now(),
+    });
 
-  response.cookies.set({
-    name: "fp_gateway_session",
-    value: signedSession,
-    path: "/",
-    httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
-    sameSite: "lax",
-    maxAge: 60 * 60 * 24 * 7, // 7-day session
-  });
+    response.cookies.set({
+      name: "fp_gateway_session",
+      value: signedSession,
+      path: "/",
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+      maxAge: 60 * 60 * 24 * 7, // 7-day session
+    });
 
-  return response;
+    return response;
+  } catch (err) {
+    return NextResponse.json(
+      { error: err instanceof Error ? err.message : "Failed to sign session." },
+      { status: 500 }
+    );
+  }
 }

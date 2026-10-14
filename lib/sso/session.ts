@@ -10,6 +10,25 @@ export interface SessionVerificationResult {
   data?: GatewaySessionData;
 }
 
+/**
+ * Normalizes a base URL by removing accidental wrapping quotes,
+ * trimming whitespace, ensuring the https:// or http:// protocol prefix,
+ * and stripping any trailing slash.
+ */
+export function normalizeBaseUrl(rawUrl?: string | null, fallback = "http://localhost:3000"): string {
+  if (!rawUrl || typeof rawUrl !== "string") {
+    return fallback;
+  }
+  let url = rawUrl.trim().replace(/^['"`]+|['"`]+$/g, "");
+  if (!url) {
+    return fallback;
+  }
+  if (!url.startsWith("http://") && !url.startsWith("https://")) {
+    url = `https://${url}`;
+  }
+  return url.replace(/\/+$/, "");
+}
+
 function bufferToBase64Url(buffer: ArrayBuffer): string {
   const bytes = new Uint8Array(buffer);
   let binary = "";

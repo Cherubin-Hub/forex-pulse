@@ -1,12 +1,25 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useMemo } from "react";
 import { ShieldCheck, ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
+function normalizeBaseUrl(rawUrl?: string | null, fallback = "http://localhost:3000"): string {
+  if (!rawUrl || typeof rawUrl !== "string") return fallback;
+  let url = rawUrl.trim().replace(/^['"`]+|['"`]+$/g, "");
+  if (!url) return fallback;
+  if (!url.startsWith("http://") && !url.startsWith("https://")) {
+    url = `https://${url}`;
+  }
+  return url.replace(/\/+$/, "");
+}
+
 export default function LoginPage() {
-  const gatewayUrl = process.env.NEXT_PUBLIC_GATEWAY_URL || "http://localhost:3000";
-  const targetLaunchUrl = `${gatewayUrl}/login?app=forex-pulse`;
+  const targetLaunchUrl = useMemo(() => {
+    const rawGatewayUrl = process.env.NEXT_PUBLIC_GATEWAY_URL || "http://localhost:3000";
+    const gatewayUrl = normalizeBaseUrl(rawGatewayUrl, "http://localhost:3000");
+    return `${gatewayUrl}/login?app=forex-pulse`;
+  }, []);
 
   useEffect(() => {
     // Automatically redirect after a short delay
