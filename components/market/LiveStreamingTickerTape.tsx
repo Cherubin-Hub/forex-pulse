@@ -1,10 +1,10 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import Link from "next/link";
 import { motion } from "framer-motion";
 import { Pause, Play, TrendingUp, TrendingDown } from "lucide-react";
-import { MOCK_QUOTES } from "@/lib/mock/quotes";
+import { useLiveMarket } from "@/components/providers/AutoTradeAutomationProvider";
 import type { PriceQuote } from "@/types/market";
 import { buildTickerFeed, type TickerItemData } from "@/lib/tickerUtils";
 import { formatPrice } from "@/lib/formatters";
@@ -14,68 +14,40 @@ interface LiveStreamingTickerTapeProps {
   initialQuotes?: PriceQuote[];
 }
 
-export function LiveStreamingTickerTape({ initialQuotes }: LiveStreamingTickerTapeProps) {
-  const [quotes, setQuotes] = useState<PriceQuote[]>(() => {
-    return initialQuotes && initialQuotes.length > 0 ? initialQuotes : MOCK_QUOTES;
-  });
+export function LiveStreamingTickerTape({ initialQuotes: _initialQuotes }: LiveStreamingTickerTapeProps) {
+  const { quotes, isStreaming, setIsStreaming } = useLiveMarket();
   const [prevPrices, setPrevPrices] = useState<Record<string, number>>({});
   const [flashingSymbols, setFlashingSymbols] = useState<Record<string, "UP" | "DOWN">>({});
-  const [isPaused, setIsPaused] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
+  const prevQuotesRef = useRef<Map<string, number>>(new Map());
 
-  // Client-side simulated micro-tick engine (interbank price pulse)
+  // Track price changes from global stream and trigger flash highlights
   useEffect(() => {
-    if (isPaused) return;
-
-    const interval = setInterval(() => {
-      setQuotes((currentQuotes) => {
-        // Pick 1 random instrument to update
-        const targetIndex = Math.floor(Math.random() * currentQuotes.length);
-        const target = currentQuotes[targetIndex];
-        if (!target || target.price === null) return currentQuotes;
-
-        const isJpyOrGold = target.symbol === "USDJPY" || target.symbol === "XAUUSD";
-        const deltaPip = (Math.random() * 0.8 - 0.4) * (isJpyOrGold ? 0.05 : 0.00008);
-        const nextPrice = Number(
-          (target.price + deltaPip).toFixed(
-            target.symbol === "USDJPY" ? 3 : target.symbol === "XAUUSD" ? 2 : 5
-          )
-        );
-
-        const dir: "UP" | "DOWN" = nextPrice >= target.price ? "UP" : "DOWN";
-
-        // Save previous price for tick direction
-        setPrevPrices((prev) => ({
-          ...prev,
-          [target.symbol]: target.price as number,
-        }));
-
-        // Flash badge for 1.2 seconds
-        setFlashingSymbols((prev) => ({
-          ...prev,
-          [target.symbol]: dir,
-        }));
+    quotes.forEach((q) => {
+      if (q.price === null) return;
+      const prev = prevQuotesRef.current.get(q.symbol);
+      if (prev !== undefined && prev !== q.price) {
+        const dir: "UP" | "DOWN" = q.price >= prev ? "UP" : "DOWN";
+        setPrevPrices((p) => ({ ...p, [q.symbol]: prev }));
+        setFlashingSymbols((f) => ({ ...f, [q.symbol]: dir }));
 
         setTimeout(() => {
-          setFlashingSymbols((prev) => {
-            const next = { ...prev };
-            delete next[target.symbol];
+          setFlashingSymbols((f) => {
+            const next = { ...f };
+            delete next[q.symbol];
             return next;
           });
         }, 1200);
-
-        return currentQuotes.map((q, idx) => (idx === targetIndex ? { ...q, price: nextPrice } : q));
-      });
-    }, 3500);
-
-    return () => clearInterval(interval);
-  }, [isPaused]);
+      }
+      prevQuotesRef.current.set(q.symbol, q.price);
+    });
+  }, [quotes]);
 
   const tickerItems = useMemo(() => {
     return buildTickerFeed(quotes, prevPrices);
   }, [quotes, prevPrices]);
 
-  const shouldAnimate = !isPaused && !isHovered;
+  const shouldAnimate = isStreaming && !isHovered;
 
   return (
     <div
@@ -94,11 +66,11 @@ export function LiveStreamingTickerTape({ initialQuotes }: LiveStreamingTickerTa
         </span>
         <button
           type="button"
-          onClick={() => setIsPaused((prev) => !prev)}
+          onClick={() => setIsStreaming(!isStreaming)}
           className="ml-1 text-muted-foreground hover:text-foreground transition-colors"
-          title={isPaused ? "Resume Live Stream" : "Pause Live Stream"}
+          title={isStreaming ? "Pause Live Stream" : "Resume Live Stream"}
         >
-          {isPaused ? <Play className="h-3 w-3 text-amber-500" /> : <Pause className="h-3 w-3" />}
+          {!isStreaming ? <Play className="h-3 w-3 text-amber-500" /> : <Pause className="h-3 w-3" />}
         </button>
       </div>
 

@@ -29,7 +29,9 @@ export type ScannerFilterConfig = {
   minRiskReward: number;           // e.g., 2.0 (1:2.0)
   enableNewsFilter: boolean;       // News Gatekeeper: avoid setups near high-impact events
   autoCommit: boolean;             // Auto-save to Supabase without manual approval
-  pollingIntervalMinutes: number;  // 0 = Off, 5 = Every 5 min, 15 = Every 15 min
+  mode: "MANUAL" | "AUTOMATIC";    // Mode switch: Manual on-demand vs Automatic continuous
+  scanIntervalSeconds: number;     // Continuous loop interval in seconds (default: 15s)
+  pollingIntervalMinutes?: number; // Legacy compatibility
 };
 
 export type ScannerRunResult = {

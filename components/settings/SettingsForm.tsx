@@ -212,6 +212,7 @@ export function SettingsForm() {
           <AnimatePresence>
             {justSaved && (
               <motion.span
+                key="settings-saved-indicator"
                 initial={{ opacity: 0, x: 8 }}
                 animate={{ opacity: 1, x: 0 }}
                 exit={{ opacity: 0 }}

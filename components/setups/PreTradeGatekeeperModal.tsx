@@ -16,8 +16,6 @@ import type { TradingSetup } from "@/types/setup";
 import type { EconomicEvent } from "@/types/calendar";
 import { useSettings } from "@/hooks/useSettings";
 import { useNow } from "@/hooks/useNow";
-import { MOCK_EVENTS } from "@/lib/mock/events";
-import { MOCK_ACTIVE_SETUPS } from "@/lib/mock/setups";
 import { evaluatePreTradeAudit, type AuditVerdict } from "@/lib/gatekeeperUtils";
 import { cn } from "@/lib/utils";
 
@@ -49,11 +47,11 @@ export function PreTradeGatekeeperModal({
   const [overrideAcknowledged, setOverrideAcknowledged] = useState(false);
 
   const auditEvents = useMemo(() => {
-    return events && events.length > 0 ? events : MOCK_EVENTS;
+    return events ?? [];
   }, [events]);
 
   const auditSetups = useMemo(() => {
-    return activeSetups && activeSetups.length > 0 ? activeSetups : MOCK_ACTIVE_SETUPS;
+    return activeSetups ?? [];
   }, [activeSetups]);
 
   const audit = useMemo(() => {

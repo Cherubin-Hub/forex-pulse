@@ -13,7 +13,7 @@ import {
   ShieldCheck, 
   PlusCircle,
   Zap,
-  Timer
+  Hand
 } from "lucide-react";
 import { formatPrice } from "@/lib/formatters";
 import { INSTRUMENTS } from "@/lib/constants/instruments";
@@ -22,6 +22,7 @@ import type { ScannedOpportunity, ScannerFilterConfig } from "@/types/scanner";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { cn } from "@/lib/utils";
 
 export function MarketScannerWidget() {
   const [isScanning, startScan] = useTransition();
@@ -35,8 +36,9 @@ export function MarketScannerWidget() {
     minConfluenceScore: 75,
     minRiskReward: 2.0,
     enableNewsFilter: true,
-    autoCommit: false,
-    pollingIntervalMinutes: 0, // 0 = Manual on-demand
+    autoCommit: true,
+    mode: "AUTOMATIC",
+    scanIntervalSeconds: 15,
   });
 
   const executeScan = useCallback((silent = false) => {
@@ -67,23 +69,23 @@ export function MarketScannerWidget() {
     });
   }, [config]);
 
-  // Background Live Polling Timer
+  // Background Live Polling Timer when in AUTOMATIC mode
   useEffect(() => {
-    if (config.pollingIntervalMinutes <= 0) return;
+    if (config.mode !== "AUTOMATIC") return;
 
-    const intervalMs = config.pollingIntervalMinutes * 60 * 1000;
+    const intervalMs = config.scanIntervalSeconds * 1000;
     const timerId = setInterval(() => {
       if (!isPollingRef.current) {
         isPollingRef.current = true;
         executeScan(true);
         setTimeout(() => {
           isPollingRef.current = false;
-        }, 5000);
+        }, 3000);
       }
     }, intervalMs);
 
     return () => clearInterval(timerId);
-  }, [config.pollingIntervalMinutes, executeScan]);
+  }, [config.mode, config.scanIntervalSeconds, executeScan]);
 
   const handleCommitSingle = async (opp: ScannedOpportunity) => {
     toast.loading(`Logging setup for ${opp.symbol}...`, { id: opp.id });
@@ -111,10 +113,18 @@ export function MarketScannerWidget() {
             <Badge variant="outline" className="bg-sky-500/10 text-sky-400 border-sky-500/20 text-[10px] font-mono">
               MTF Trend Pullback Engine
             </Badge>
-            {config.pollingIntervalMinutes > 0 && (
-              <Badge variant="outline" className="bg-emerald-500/10 text-emerald-400 border-emerald-500/20 text-[10px] font-mono flex items-center gap-1">
-                <Timer className="h-3 w-3" />
-                Live {config.pollingIntervalMinutes}m
+            {config.mode === "AUTOMATIC" ? (
+              <Badge variant="outline" className="bg-emerald-500/10 text-emerald-400 border-emerald-500/20 text-[10px] font-mono flex items-center gap-1.5">
+                <span className="relative flex h-2 w-2">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
+                </span>
+                Auto Continuous ({config.scanIntervalSeconds}s)
+              </Badge>
+            ) : (
+              <Badge variant="outline" className="bg-muted text-muted-foreground border-border text-[10px] font-mono flex items-center gap-1">
+                <Hand className="h-3 w-3" />
+                Manual Mode
               </Badge>
             )}
           </div>
@@ -149,6 +159,46 @@ export function MarketScannerWidget() {
         {/* Filter Configuration Drawer */}
         {showConfig && (
           <div className="rounded-lg border border-border bg-muted/40 p-3.5 grid grid-cols-1 sm:grid-cols-5 gap-3 text-xs animate-in fade-in-50 duration-200">
+            {/* Mode Switch: Manual vs Automatic */}
+            <div className="col-span-1 sm:col-span-2">
+              <label className="font-semibold text-muted-foreground block mb-1.5">
+                Scanner Execution Mode
+              </label>
+              <div className="grid grid-cols-2 gap-1 rounded-lg border border-border bg-background p-1 text-xs">
+                <button
+                  type="button"
+                  onClick={() => setConfig({ ...config, mode: "MANUAL", autoCommit: false })}
+                  className={cn(
+                    "flex items-center justify-center gap-1.5 rounded-md py-1.5 font-medium transition-all cursor-pointer",
+                    config.mode === "MANUAL"
+                      ? "bg-muted text-foreground font-semibold shadow-xs"
+                      : "text-muted-foreground hover:text-foreground"
+                  )}
+                >
+                  <Hand className="h-3.5 w-3.5" />
+                  Manual Mode
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setConfig({ ...config, mode: "AUTOMATIC", autoCommit: true })}
+                  className={cn(
+                    "flex items-center justify-center gap-1.5 rounded-md py-1.5 font-medium transition-all cursor-pointer",
+                    config.mode === "AUTOMATIC"
+                      ? "bg-sky-500 text-white font-semibold shadow-xs"
+                      : "text-muted-foreground hover:text-foreground"
+                  )}
+                >
+                  <Zap className="h-3.5 w-3.5" />
+                  Automatic Mode
+                </button>
+              </div>
+              <p className="text-[10px] text-muted-foreground mt-1">
+                {config.mode === "AUTOMATIC"
+                  ? `⚡ Continuous auto-scans every ${config.scanIntervalSeconds}s with direct Supabase logging.`
+                  : "👆 On-demand scan only when you click 'Scan Market Now'."}
+              </p>
+            </div>
+
             <div>
               <label className="font-semibold text-muted-foreground block mb-1">
                 Min Confluence ({config.minConfluenceScore}%)
@@ -179,45 +229,32 @@ export function MarketScannerWidget() {
               />
             </div>
 
-            <div>
-              <label className="font-semibold text-muted-foreground block mb-1">
-                Live Polling
-              </label>
-              <select
-                value={config.pollingIntervalMinutes}
-                onChange={(e) => setConfig({ ...config, pollingIntervalMinutes: Number(e.target.value) })}
-                className="w-full rounded-md border border-input bg-background px-2 py-1 text-xs text-foreground"
-              >
-                <option value={0}>Manual Only</option>
-                <option value={5}>Every 5 mins</option>
-                <option value={15}>Every 15 mins</option>
-              </select>
-            </div>
+            <div className="flex flex-col justify-end space-y-2">
+              <div className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  id="newsFilter"
+                  checked={config.enableNewsFilter}
+                  onChange={(e) => setConfig({ ...config, enableNewsFilter: e.target.checked })}
+                  className="rounded border-border text-sky-500 focus:ring-sky-500 h-4 w-4"
+                />
+                <label htmlFor="newsFilter" className="font-medium text-foreground cursor-pointer">
+                  News Risk Filter
+                </label>
+              </div>
 
-            <div className="flex items-center gap-2 pt-3">
-              <input
-                type="checkbox"
-                id="newsFilter"
-                checked={config.enableNewsFilter}
-                onChange={(e) => setConfig({ ...config, enableNewsFilter: e.target.checked })}
-                className="rounded border-border text-sky-500 focus:ring-sky-500 h-4 w-4"
-              />
-              <label htmlFor="newsFilter" className="font-medium text-foreground cursor-pointer">
-                News Risk Filter
-              </label>
-            </div>
-
-            <div className="flex items-center gap-2 pt-3">
-              <input
-                type="checkbox"
-                id="autoCommit"
-                checked={config.autoCommit}
-                onChange={(e) => setConfig({ ...config, autoCommit: e.target.checked })}
-                className="rounded border-border text-sky-500 focus:ring-sky-500 h-4 w-4"
-              />
-              <label htmlFor="autoCommit" className="font-medium text-foreground cursor-pointer flex items-center gap-1">
-                Auto-Commit <Zap className="h-3 w-3 text-amber-500" />
-              </label>
+              <div className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  id="autoCommit"
+                  checked={config.autoCommit}
+                  onChange={(e) => setConfig({ ...config, autoCommit: e.target.checked })}
+                  className="rounded border-border text-sky-500 focus:ring-sky-500 h-4 w-4"
+                />
+                <label htmlFor="autoCommit" className="font-medium text-foreground cursor-pointer flex items-center gap-1">
+                  Auto-Commit <Zap className="h-3 w-3 text-amber-500" />
+                </label>
+              </div>
             </div>
           </div>
         )}
@@ -241,83 +278,99 @@ export function MarketScannerWidget() {
                 return (
                   <div
                     key={opp.id}
-                    className="rounded-lg border border-border bg-card/60 p-3.5 space-y-3 relative overflow-hidden transition-all hover:border-sky-500/50"
+                    className="rounded-xl border border-border bg-card p-4 space-y-3 shadow-xs hover:border-primary/40 transition-colors"
                   >
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
-                        <span className="font-bold text-sm tracking-tight">{opp.symbol}</span>
-                        <Badge
-                          variant="outline"
-                          className={
+                        <span
+                          className={`flex h-6 w-6 items-center justify-center rounded-md font-bold text-xs ${
                             opp.direction === "LONG"
-                              ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/30"
-                              : "bg-rose-500/10 text-rose-400 border-rose-500/30"
-                          }
+                              ? "bg-emerald-500/10 text-emerald-500"
+                              : "bg-rose-500/10 text-rose-500"
+                          }`}
                         >
                           {opp.direction === "LONG" ? (
-                            <ArrowUpRight className="h-3 w-3 mr-0.5 inline" />
+                            <ArrowUpRight className="h-4 w-4" />
                           ) : (
-                            <ArrowDownRight className="h-3 w-3 mr-0.5 inline" />
+                            <ArrowDownRight className="h-4 w-4" />
                           )}
-                          {opp.direction}
-                        </Badge>
+                        </span>
+                        <div>
+                          <span className="font-bold text-sm text-foreground">{opp.symbol}</span>
+                          <span className="text-[10px] text-muted-foreground ml-1.5 font-mono">
+                            {opp.strategy}
+                          </span>
+                        </div>
                       </div>
 
-                      <div className="flex items-center gap-1.5 font-mono text-xs">
-                        <span className="text-muted-foreground">R:R</span>
-                        <span className="font-semibold text-emerald-400">1:{opp.riskReward}</span>
+                      <div className="flex items-center gap-1.5">
+                        <Badge variant="outline" className="font-mono text-[10px] bg-primary/5 text-primary border-primary/20">
+                          R:R 1:{opp.riskReward}
+                        </Badge>
+                        <Badge
+                          variant="outline"
+                          className="font-mono text-[10px] bg-emerald-500/10 text-emerald-500 border-emerald-500/20"
+                        >
+                          {opp.confluenceScore}% Confluence
+                        </Badge>
                       </div>
                     </div>
 
-                    {/* Price Corridor Parameters */}
-                    <div className="grid grid-cols-3 gap-2 text-[11px] font-mono bg-muted/30 rounded p-2 border border-border/50">
+                    {/* Geometry Matrix */}
+                    <div className="grid grid-cols-3 gap-2 rounded-lg bg-muted/30 p-2.5 text-center text-xs">
                       <div>
-                        <span className="text-muted-foreground block text-[10px]">ENTRY ZONE</span>
-                        <span className="font-medium text-foreground">
-                          {formatPrice(opp.entryMin, decimals)} - {formatPrice(opp.entryMax, decimals)}
+                        <span className="text-[10px] text-muted-foreground block">Entry Zone</span>
+                        <span className="font-mono font-medium text-foreground">
+                          {formatPrice(opp.entryMin, decimals)}
+                        </span>
+                        <span className="text-[9px] text-muted-foreground block font-mono">
+                          {formatPrice(opp.entryMax, decimals)}
                         </span>
                       </div>
-                      <div>
-                        <span className="text-muted-foreground block text-[10px]">STOP LOSS</span>
-                        <span className="font-medium text-rose-400">
+                      <div className="border-l border-border/60">
+                        <span className="text-[10px] text-muted-foreground block">Stop Loss</span>
+                        <span className="font-mono font-medium text-rose-500">
                           {formatPrice(opp.stopLoss, decimals)}
                         </span>
                       </div>
-                      <div>
-                        <span className="text-muted-foreground block text-[10px]">TAKE PROFIT</span>
-                        <span className="font-medium text-emerald-400">
+                      <div className="border-l border-border/60">
+                        <span className="text-[10px] text-muted-foreground block">Take Profit 1</span>
+                        <span className="font-mono font-medium text-emerald-500">
                           {formatPrice(opp.takeProfit1, decimals)}
                         </span>
                       </div>
                     </div>
 
-                    {/* Confluence Tags */}
+                    {/* Confluence Tag Pills */}
                     <div className="flex flex-wrap gap-1">
-                      {opp.confluenceTags.map((tag, idx) => (
+                      {opp.confluenceTags.map((tag) => (
                         <span
-                          key={idx}
-                          className="text-[10px] bg-secondary/80 text-secondary-foreground px-2 py-0.5 rounded-full"
+                          key={tag}
+                          className="rounded border border-border/60 bg-muted/40 px-1.5 py-0.5 text-[9px] font-mono text-muted-foreground"
                         >
                           {tag}
                         </span>
                       ))}
                     </div>
 
-                    {/* Action Button */}
-                    <div className="pt-1 flex justify-end">
+                    {/* Action Bar */}
+                    <div className="flex items-center justify-between pt-1 border-t border-border/50">
+                      <span className="text-[10px] text-muted-foreground truncate max-w-[220px]" title={opp.invalidationRule}>
+                        {opp.invalidationRule}
+                      </span>
+
                       {isCommitted ? (
-                        <Button size="sm" disabled variant="outline" className="h-7 text-xs gap-1 text-emerald-500 border-emerald-500/30">
-                          <CheckCircle2 className="h-3.5 w-3.5" />
-                          Committed to Setups
-                        </Button>
+                        <span className="inline-flex items-center gap-1 text-xs font-semibold text-emerald-500 font-mono">
+                          <CheckCircle2 className="h-3.5 w-3.5" /> Logged to Radar
+                        </span>
                       ) : (
                         <Button
                           size="sm"
                           onClick={() => handleCommitSingle(opp)}
-                          className="h-7 text-xs gap-1.5 bg-emerald-600 hover:bg-emerald-500 text-white font-medium"
+                          className="h-7 text-xs gap-1 bg-primary text-primary-foreground font-semibold"
                         >
                           <PlusCircle className="h-3.5 w-3.5" />
-                          Approve & Commit Setup
+                          Approve Setup
                         </Button>
                       )}
                     </div>
@@ -326,11 +379,9 @@ export function MarketScannerWidget() {
               })}
             </div>
           </div>
-        ) : hasScanned && !isScanning ? (
-          <div className="rounded-lg border border-dashed border-border p-6 text-center text-xs text-muted-foreground space-y-1">
-            <Sparkles className="h-5 w-5 mx-auto text-muted-foreground/60 mb-2" />
-            <p className="font-medium text-foreground">No High-Probability Setups Detected</p>
-            <p>All currency pairs either have news hazards or do not currently satisfy your {config.minConfluenceScore}% confluence threshold.</p>
+        ) : hasScanned ? (
+          <div className="rounded-lg border border-dashed border-border p-6 text-center text-xs text-muted-foreground">
+            No opportunities met your minimum confluence ({config.minConfluenceScore}%) or R:R (1:{config.minRiskReward}) thresholds on this cycle.
           </div>
         ) : null}
       </CardContent>

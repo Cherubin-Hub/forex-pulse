@@ -2,12 +2,23 @@ import type { TechnicalAnalysis } from "@/types/technical";
 import { MOCK_TECHNICALS } from "@/lib/mock/technical";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { mapRowToTechnicalAnalysis } from "@/lib/supabase/mappers";
+import { getFinnhubApiKey, getFinnhubTechnicalAnalysis } from "@/lib/services/finnhub";
 
 /**
  * Controller service to retrieve multi-timeframe technical indicator analysis.
- * Queries Supabase first; falls back to deterministic mock data if empty or offline.
+ * Prioritizes live Finnhub API candles when an API key is configured.
+ * Queries Supabase next; falls back to deterministic mock data if empty or offline.
  */
 export async function getTechnicalAnalysis(): Promise<TechnicalAnalysis[]> {
+  if (getFinnhubApiKey()) {
+    try {
+      const live = await getFinnhubTechnicalAnalysis();
+      if (live && live.length > 0) return live;
+    } catch {
+      // Fallback on error
+    }
+  }
+
   try {
     const supabase = await createServerSupabaseClient();
     const { data, error } = await supabase

@@ -37,8 +37,9 @@ export function ShortcutsHelpModal({ isOpen, onClose }: ShortcutsHelpModalProps)
   return (
     <AnimatePresence>
       {isOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+        <div key="shortcuts-modal-container" className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <motion.div
+            key="shortcuts-modal-backdrop"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
@@ -47,6 +48,7 @@ export function ShortcutsHelpModal({ isOpen, onClose }: ShortcutsHelpModalProps)
           />
 
           <motion.div
+            key="shortcuts-modal-content"
             initial={{ opacity: 0, scale: 0.96, y: 8 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.96, y: 8 }}

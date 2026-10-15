@@ -1,11 +1,10 @@
 import type { TradingSetup } from "@/types/setup";
-import { MOCK_ACTIVE_SETUPS, MOCK_HISTORY_SETUPS } from "@/lib/mock/setups";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { mapRowToSetup } from "@/lib/supabase/mappers";
 
 /**
  * Retrieves currently active trading setups (WAITING_FOR_CONFIRMATION or ENTRY_TRIGGERED).
- * Queries Supabase first; falls back to mock data if empty or connection fails.
+ * Queries Supabase first; returns empty list if no setups exist or connection fails.
  */
 export async function getActiveSetups(): Promise<TradingSetup[]> {
   try {
@@ -17,14 +16,14 @@ export async function getActiveSetups(): Promise<TradingSetup[]> {
       .order("created_at", { ascending: false });
 
     if (error || !data || data.length === 0) {
-      if (error) console.warn("Supabase active setups query error, using mock fallback:", error.message);
-      return MOCK_ACTIVE_SETUPS;
+      if (error) console.warn("Supabase active setups query error:", error.message);
+      return [];
     }
 
     return data.map(mapRowToSetup);
   } catch (err) {
-    console.warn("Supabase client unavailable, using mock setups fallback:", err instanceof Error ? err.message : err);
-    return MOCK_ACTIVE_SETUPS;
+    console.warn("Supabase client unavailable for active setups:", err instanceof Error ? err.message : err);
+    return [];
   }
 }
 
@@ -41,13 +40,13 @@ export async function getHistorySetups(): Promise<TradingSetup[]> {
       .order("created_at", { ascending: false });
 
     if (error || !data || data.length === 0) {
-      if (error) console.warn("Supabase history setups query error, using mock fallback:", error.message);
-      return MOCK_HISTORY_SETUPS;
+      if (error) console.warn("Supabase history setups query error:", error.message);
+      return [];
     }
 
     return data.map(mapRowToSetup);
   } catch (err) {
-    console.warn("Supabase client unavailable, using mock history fallback:", err instanceof Error ? err.message : err);
-    return MOCK_HISTORY_SETUPS;
+    console.warn("Supabase client unavailable for history setups:", err instanceof Error ? err.message : err);
+    return [];
   }
 }

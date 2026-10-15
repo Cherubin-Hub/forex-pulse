@@ -1,11 +1,10 @@
 import type { SystemNotification } from "@/types/notification";
-import { MOCK_NOTIFICATIONS } from "@/lib/mock/notifications";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { mapRowToNotification } from "@/lib/supabase/mappers";
 
 /**
  * Single entry point for fetching notifications.
- * Queries Supabase first; falls back gracefully to deterministic mock data if offline or empty.
+ * Queries Supabase first; returns empty array if offline or empty.
  */
 export async function getNotifications(): Promise<SystemNotification[]> {
   try {
@@ -18,18 +17,18 @@ export async function getNotifications(): Promise<SystemNotification[]> {
 
     if (error || !data || data.length === 0) {
       if (error) {
-        console.warn("Supabase notifications query error, using mock fallback:", error.message);
+        console.warn("Supabase notifications query error:", error.message);
       }
-      return MOCK_NOTIFICATIONS;
+      return [];
     }
 
     return data.map(mapRowToNotification);
   } catch (err) {
     console.warn(
-      "Supabase client unavailable, using mock notifications fallback:",
+      "Supabase client unavailable for notifications:",
       err instanceof Error ? err.message : err
     );
-    return MOCK_NOTIFICATIONS;
+    return [];
   }
 }
 

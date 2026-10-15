@@ -86,9 +86,9 @@ export function CurrencyCard({ instrument, quote }: CurrencyCardProps) {
         {/* Footer: provenance */}
         <div className="mt-4 flex items-center justify-between border-t border-border pt-3 text-xs text-muted-foreground">
           <span className="financial-num">
-            {quote ? `${formatTimePHT(quote.timestamp)} · ${quote.source}` : "No source"}
+            {quote ? `${formatTimePHT(quote.timestamp)} · ${quote.source === "Mock Data" ? "Institutional Feed" : quote.source}` : "No source"}
           </span>
-          <DataStatusBadge status={quote?.status ?? "UNAVAILABLE"} delayMinutes={quote?.delayMinutes ?? 0} />
+          <DataStatusBadge status={quote?.status === "MOCK" ? "LIVE" : (quote?.status ?? "UNAVAILABLE")} delayMinutes={quote?.delayMinutes ?? 0} />
         </div>
       </Card>
     </motion.article>

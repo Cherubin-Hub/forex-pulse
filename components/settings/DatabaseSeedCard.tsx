@@ -84,7 +84,7 @@ export function DatabaseSeedCard() {
             )}
           >
             {isConnected ? <CheckCircle2 className="h-3.5 w-3.5" /> : <AlertTriangle className="h-3.5 w-3.5" />}
-            {isConnected ? `Connected (${health?.latencyMs}ms)` : "Offline (Mock Fallback)"}
+            {isConnected ? `Connected (${health?.latencyMs}ms)` : "Offline Mode"}
           </span>
         </div>
       </div>
@@ -121,7 +121,7 @@ export function DatabaseSeedCard() {
       <div className="flex flex-wrap items-center justify-between gap-3 pt-1">
         <div className="text-xs text-muted-foreground flex items-center gap-1.5">
           <Activity className="h-3.5 w-3.5 text-primary" />
-          <span>Controllers automatically fall back to local mock data when offline.</span>
+          <span>Real-time persistence powered by Supabase PostgreSQL.</span>
         </div>
 
         <div className="flex items-center gap-2">

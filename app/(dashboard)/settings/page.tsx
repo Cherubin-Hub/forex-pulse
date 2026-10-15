@@ -1,5 +1,6 @@
 import { SettingsForm } from "@/components/settings/SettingsForm";
 import { DatabaseSeedCard } from "@/components/settings/DatabaseSeedCard";
+import { FinnhubApiKeyCard } from "@/components/settings/FinnhubApiKeyCard";
 
 export default function SettingsPage() {
   return (
@@ -10,6 +11,9 @@ export default function SettingsPage() {
           Personalize analysis, execution rules, and manage cloud database synchronization.
         </p>
       </div>
+
+      {/* Live Market Data Feed Configuration */}
+      <FinnhubApiKeyCard />
 
       {/* Trader Profile & Risk Preferences */}
       <SettingsForm />

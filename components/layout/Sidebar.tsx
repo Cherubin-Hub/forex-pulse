@@ -27,6 +27,7 @@ export function Sidebar() {
         <AnimatePresence>
           {!isCollapsed && (
             <motion.span
+              key="sidebar-brand-name"
               initial={{ opacity: 0, x: -8 }}
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, x: -8 }}
