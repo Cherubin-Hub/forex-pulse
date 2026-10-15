@@ -41,9 +41,10 @@ export function MobileSidebar() {
 
       <AnimatePresence>
         {isOpen && (
-          <>
+          <div key="mobile-sidebar-container">
             {/* Backdrop */}
             <motion.div
+              key="mobile-sidebar-backdrop"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
@@ -54,6 +55,7 @@ export function MobileSidebar() {
 
             {/* Drawer */}
             <motion.aside
+              key="mobile-sidebar-drawer"
               initial={{ x: "-100%" }}
               animate={{ x: 0 }}
               exit={{ x: "-100%" }}
@@ -74,7 +76,7 @@ export function MobileSidebar() {
 
               <SidebarNav pillId="mobile-active-pill" onNavigate={close} />
             </motion.aside>
-          </>
+          </div>
         )}
       </AnimatePresence>
     </>

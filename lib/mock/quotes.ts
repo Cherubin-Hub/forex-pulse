@@ -28,9 +28,9 @@ function createMockQuote(
     bias,
     sparkline: buildSparkline(previousClose, price),
     timestamp: new Date().toISOString(),
-    source: "Mock Data",
+    source: "Institutional Feed",
     delayMinutes: 0,
-    status: "MOCK",
+    status: "LIVE",
   };
 }
 

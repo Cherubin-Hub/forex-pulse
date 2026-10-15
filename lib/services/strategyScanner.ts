@@ -1,6 +1,7 @@
 import { getQuotes } from "@/lib/services/marketData";
 import { getTechnicalAnalysis } from "@/lib/services/technical";
 import { getEconomicEvents } from "@/lib/services/calendar";
+import { getActiveSetups } from "@/lib/services/setups";
 import { calculateConfluenceScore, calculateDailyPivots } from "@/lib/technicalUtils";
 import { calculateRiskReward } from "@/lib/setupUtils";
 import { INSTRUMENTS } from "@/lib/constants/instruments";
@@ -13,8 +14,9 @@ const DEFAULT_CONFIG: ScannerFilterConfig = {
   minConfluenceScore: 75,
   minRiskReward: 2.0,
   enableNewsFilter: true,
-  autoCommit: false,
-  pollingIntervalMinutes: 0,
+  autoCommit: true,
+  mode: "AUTOMATIC",
+  scanIntervalSeconds: 15,
 };
 
 /**
@@ -161,15 +163,20 @@ export async function scanMarketOpportunities(
 ): Promise<ScannerRunResult> {
   const config: ScannerFilterConfig = { ...DEFAULT_CONFIG, ...userConfig };
 
-  const [quotes, technicals, events] = await Promise.all([
+  const [quotes, technicals, events, activeSetups] = await Promise.all([
     getQuotes(),
     getTechnicalAnalysis(),
     getEconomicEvents(),
+    getActiveSetups(),
   ]);
 
+  const activeSymbols = new Set(activeSetups.map((s) => s.symbol));
   const opportunities: ScannedOpportunity[] = [];
 
   for (const quote of quotes) {
+    // Deduplication guard: Skip if an active setup for this symbol is already running or waiting
+    if (activeSymbols.has(quote.symbol)) continue;
+
     const tech = technicals.find((t) => t.symbol === quote.symbol);
     if (!tech) continue;
 

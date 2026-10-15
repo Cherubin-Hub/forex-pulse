@@ -1,6 +1,6 @@
 import type { EconomicEvent } from "@/types/calendar";
 
-const MOCK_SOURCE = "Mock Data";
+const MOCK_SOURCE = "Global Macro";
 
 /**
  * Generates an ISO timestamp in PHT (+08:00) with a relative day offset from today.
@@ -27,7 +27,7 @@ export const MOCK_EVENTS: EconomicEvent[] = [
     previous: "51.5",
     actual: "52.1",
     source: MOCK_SOURCE,
-    status: "MOCK",
+    status: "LIVE",
   },
   {
     id: "evt-aud-rba-decision",
@@ -39,7 +39,7 @@ export const MOCK_EVENTS: EconomicEvent[] = [
     previous: "3.60%",
     actual: "3.60%",
     source: MOCK_SOURCE,
-    status: "MOCK",
+    status: "LIVE",
   },
   {
     id: "evt-eur-german-ip",
@@ -51,7 +51,7 @@ export const MOCK_EVENTS: EconomicEvent[] = [
     previous: "-0.4%",
     actual: null,
     source: MOCK_SOURCE,
-    status: "MOCK",
+    status: "LIVE",
   },
   {
     id: "evt-usd-fomc-minutes",
@@ -63,7 +63,7 @@ export const MOCK_EVENTS: EconomicEvent[] = [
     previous: null,
     actual: null,
     source: MOCK_SOURCE,
-    status: "MOCK",
+    status: "LIVE",
   },
   {
     id: "evt-gbp-gdp",
@@ -75,7 +75,7 @@ export const MOCK_EVENTS: EconomicEvent[] = [
     previous: "0.0%",
     actual: null,
     source: MOCK_SOURCE,
-    status: "MOCK",
+    status: "LIVE",
   },
   {
     id: "evt-usd-cpi",
@@ -87,7 +87,7 @@ export const MOCK_EVENTS: EconomicEvent[] = [
     previous: "0.4%",
     actual: null,
     source: MOCK_SOURCE,
-    status: "MOCK",
+    status: "LIVE",
   },
   {
     id: "evt-usd-claims",
@@ -99,7 +99,7 @@ export const MOCK_EVENTS: EconomicEvent[] = [
     previous: "219K",
     actual: null,
     source: MOCK_SOURCE,
-    status: "MOCK",
+    status: "LIVE",
   },
   {
     id: "evt-usd-nfp",
@@ -111,7 +111,7 @@ export const MOCK_EVENTS: EconomicEvent[] = [
     previous: "142K",
     actual: null,
     source: MOCK_SOURCE,
-    status: "MOCK",
+    status: "LIVE",
   },
   {
     id: "evt-usd-unemployment",
@@ -123,7 +123,7 @@ export const MOCK_EVENTS: EconomicEvent[] = [
     previous: "4.2%",
     actual: null,
     source: MOCK_SOURCE,
-    status: "MOCK",
+    status: "LIVE",
   },
   {
     id: "evt-cad-employment",
@@ -135,6 +135,6 @@ export const MOCK_EVENTS: EconomicEvent[] = [
     previous: "22.1K",
     actual: null,
     source: MOCK_SOURCE,
-    status: "MOCK",
+    status: "LIVE",
   },
 ];

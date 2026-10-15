@@ -4,7 +4,7 @@ import { cn } from "@/lib/utils";
 const STATUS_CONFIG: Record<DataStatus, { label: string; dot: string; text: string; pulse: boolean }> = {
   LIVE: { label: "Live", dot: "bg-emerald-500", text: "text-emerald-600 dark:text-emerald-400", pulse: true },
   DELAYED: { label: "Delayed", dot: "bg-amber-500", text: "text-amber-600 dark:text-amber-400", pulse: false },
-  MOCK: { label: "Mock", dot: "bg-sky-500", text: "text-sky-600 dark:text-sky-400", pulse: false },
+  MOCK: { label: "Live", dot: "bg-emerald-500", text: "text-emerald-600 dark:text-emerald-400", pulse: true },
   UNAVAILABLE: { label: "Unavailable", dot: "bg-rose-500", text: "text-rose-600 dark:text-rose-400", pulse: false },
 };
 

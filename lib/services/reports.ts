@@ -1,11 +1,10 @@
 import type { SessionReport } from "@/types/report";
-import { MOCK_REPORTS } from "@/lib/mock/reports";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { mapRowToReport } from "@/lib/supabase/mappers";
 
 /**
  * Controller service to retrieve all session reports.
- * Queries Supabase first; falls back to mock data if empty or offline.
+ * Queries Supabase first; returns empty array if empty or offline.
  */
 export async function getSessionReports(): Promise<SessionReport[]> {
   try {
@@ -16,14 +15,14 @@ export async function getSessionReports(): Promise<SessionReport[]> {
       .order("timestamp", { ascending: false });
 
     if (error || !data || data.length === 0) {
-      if (error) console.warn("Supabase reports query error, using mock fallback:", error.message);
-      return MOCK_REPORTS;
+      if (error) console.warn("Supabase reports query error:", error.message);
+      return [];
     }
 
     return data.map(mapRowToReport);
   } catch (err) {
-    console.warn("Supabase client unavailable, using mock reports fallback:", err instanceof Error ? err.message : err);
-    return MOCK_REPORTS;
+    console.warn("Supabase client unavailable for session reports:", err instanceof Error ? err.message : err);
+    return [];
   }
 }
 

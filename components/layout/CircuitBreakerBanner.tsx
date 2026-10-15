@@ -10,7 +10,6 @@ import {
 } from "lucide-react";
 import { useSettings } from "@/hooks/useSettings";
 import { useNow } from "@/hooks/useNow";
-import { MOCK_ACTIVE_SETUPS, MOCK_HISTORY_SETUPS } from "@/lib/mock/setups";
 import type { TradingSetup } from "@/types/setup";
 import {
   evaluateCircuitBreaker,
@@ -28,10 +27,9 @@ export function CircuitBreakerBanner({ setups }: CircuitBreakerBannerProps) {
   const [isTiltModalOpen, setIsTiltModalOpen] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
 
-  // Combine setups for intraday evaluation: prefer live setups, fallback to mock
+  // Intraday evaluation: evaluate user setups without mock fallback
   const allSetups = useMemo(() => {
-    if (setups && setups.length > 0) return setups;
-    return [...MOCK_ACTIVE_SETUPS, ...MOCK_HISTORY_SETUPS];
+    return setups ?? [];
   }, [setups]);
 
   const metrics = useMemo(() => {
