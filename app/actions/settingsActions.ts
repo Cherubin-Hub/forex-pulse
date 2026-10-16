@@ -1,6 +1,7 @@
 "use server";
 
-import { createServerSupabaseClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
+import { getAuthenticatedUserId } from "@/lib/auth/user";
 import type { UserSettings } from "@/lib/schemas/settings";
 
 export interface SettingsActionResult {
@@ -10,21 +11,20 @@ export interface SettingsActionResult {
 }
 
 /**
- * Server Action to fetch user settings from Supabase.
+ * Server Action to fetch user settings from Supabase specific to the logged-in user.
  */
 export async function fetchCloudSettings(): Promise<SettingsActionResult> {
   try {
-    const supabase = await createServerSupabaseClient();
-    
-    // 1. Enforce Authentication
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
-    if (authError || !user) return { success: false, error: "Unauthorized" };
+    const userId = await getAuthenticatedUserId();
+    if (!userId) return { success: false, error: "Unauthorized" };
 
-    // 2. Fetch specific to this user
+    const supabase = createAdminClient();
+
+    // Fetch settings specific to this user's UUID
     const { data, error } = await supabase
       .from("user_settings")
       .select("*")
-      .eq("user_id", user.id)
+      .eq("user_id", userId)
       .limit(1)
       .maybeSingle();
 
@@ -48,26 +48,24 @@ export async function fetchCloudSettings(): Promise<SettingsActionResult> {
 }
 
 /**
- * Server Action to save or update settings in Supabase.
+ * Server Action to save or update settings in Supabase specific to the logged-in user.
  */
 export async function saveCloudSettings(settings: UserSettings): Promise<SettingsActionResult> {
   try {
-    const supabase = await createServerSupabaseClient();
+    const userId = await getAuthenticatedUserId();
+    if (!userId) return { success: false, error: "Unauthorized" };
 
-    // 1. Enforce Authentication
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
-    if (authError || !user) return { success: false, error: "Unauthorized" };
+    const supabase = createAdminClient();
 
     const { data: existing } = await supabase
       .from("user_settings")
       .select("id")
-      .eq("user_id", user.id)
+      .eq("user_id", userId)
       .limit(1)
       .maybeSingle();
 
-    // 2. Use the actual user's UUID
     const payload = {
-      user_id: user.id,
+      user_id: userId,
       trader_profile: settings.traderProfile,
       risk_per_trade_percent: settings.riskPerTradePercent,
       min_risk_reward: settings.minRiskReward,

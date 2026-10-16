@@ -1,17 +1,22 @@
 import type { SessionReport } from "@/types/report";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { mapRowToReport } from "@/lib/supabase/mappers";
+import { getAuthenticatedUserId } from "@/lib/auth/user";
 
 /**
  * Controller service to retrieve all session reports.
- * Queries Supabase first; returns empty array if empty or offline.
+ * Scoped specifically to the authenticated user.
  */
 export async function getSessionReports(): Promise<SessionReport[]> {
   try {
+    const userId = await getAuthenticatedUserId();
+    if (!userId) return [];
+
     const supabase = await createServerSupabaseClient();
     const { data, error } = await supabase
       .from("session_reports")
       .select("*")
+      .eq("playbook->>userId", userId)
       .order("timestamp", { ascending: false });
 
     if (error || !data || data.length === 0) {

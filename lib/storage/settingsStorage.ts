@@ -1,15 +1,18 @@
 import { settingsSchema, type UserSettings } from "@/lib/schemas/settings";
 import { DEFAULT_SETTINGS, SETTINGS_STORAGE_KEY } from "@/lib/constants/settings";
 
+function getStorageKey(userId?: string | null): string {
+  return userId ? `${SETTINGS_STORAGE_KEY}_${userId}` : SETTINGS_STORAGE_KEY;
+}
+
 /**
- * Persistence for user settings.
- * Today: browser localStorage. Later: Supabase — only this file changes.
+ * Persistence for user settings, scoped by user ID to guarantee multi-user isolation.
  */
-export function loadSettings(): UserSettings {
+export function loadSettings(userId?: string | null): UserSettings {
   if (typeof window === "undefined") return DEFAULT_SETTINGS;
 
   try {
-    const raw = window.localStorage.getItem(SETTINGS_STORAGE_KEY);
+    const raw = window.localStorage.getItem(getStorageKey(userId));
     if (!raw) return DEFAULT_SETTINGS;
 
     const result = settingsSchema.safeParse(JSON.parse(raw));
@@ -19,10 +22,12 @@ export function loadSettings(): UserSettings {
   }
 }
 
-export function saveSettings(settings: UserSettings): void {
-  window.localStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify(settings));
+export function saveSettings(settings: UserSettings, userId?: string | null): void {
+  if (typeof window === "undefined") return;
+  window.localStorage.setItem(getStorageKey(userId), JSON.stringify(settings));
 }
 
-export function clearSettings(): void {
-  window.localStorage.removeItem(SETTINGS_STORAGE_KEY);
+export function clearSettings(userId?: string | null): void {
+  if (typeof window === "undefined") return;
+  window.localStorage.removeItem(getStorageKey(userId));
 }

@@ -4,12 +4,15 @@ import { TrendingUp, TrendingDown, Flame, Globe2 } from "lucide-react";
 import type { PriceQuote } from "@/types/market";
 import { INSTRUMENTS } from "@/lib/constants/instruments";
 import { calculateChange, calculateDailyRangePips, formatPercent } from "@/lib/formatters";
+import { useLiveMarket } from "@/components/providers/AutoTradeAutomationProvider";
 
 interface MarketsSummaryCardsProps {
   quotes: PriceQuote[];
 }
 
-export function MarketsSummaryCards({ quotes }: MarketsSummaryCardsProps) {
+export function MarketsSummaryCards({ quotes: initialQuotes }: MarketsSummaryCardsProps) {
+  const { quotes: liveQuotes } = useLiveMarket();
+  const quotes = liveQuotes.length > 0 ? liveQuotes : initialQuotes;
   const analyzedQuotes = quotes.map((q) => {
     const inst = INSTRUMENTS.find((i) => i.symbol === q.symbol);
     const decimals = inst?.decimals ?? 5;

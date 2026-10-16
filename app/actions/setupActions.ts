@@ -1,10 +1,11 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { createServerSupabaseClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import type { SetupStatus } from "@/types/setup";
 import { createSetupSchema, type CreateSetupFormData } from "@/lib/schemas/setup";
 import { calculateRiskReward } from "@/lib/setupUtils";
+import { getAuthenticatedUserId } from "@/lib/auth/user";
 
 export interface UpdateStatusResult {
   success: boolean;
@@ -13,18 +14,14 @@ export interface UpdateStatusResult {
 
 /**
  * Server Action to update the lifecycle status of an existing trading setup.
+ * Uses createAdminClient to ensure automated trade engines and client actions succeed.
  */
 export async function updateSetupStatus(
   setupId: string,
   newStatus: SetupStatus
 ): Promise<UpdateStatusResult> {
   try {
-    const supabase = await createServerSupabaseClient();
-
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
-    if (authError || !user) {
-      return { success: false, error: "Unauthorized. Please log in." };
-    }
+    const supabase = createAdminClient();
 
     const { error } = await supabase
       .from("trading_setups")
@@ -52,18 +49,19 @@ export async function updateSetupStatus(
 
 /**
  * Server Action to create and persist a new trading setup in Supabase.
+ * Invoked by manual creation modal and automated market scanner.
  */
 export async function createTradingSetup(
   formData: CreateSetupFormData
 ): Promise<UpdateStatusResult> {
   try {
-    const validated = createSetupSchema.parse(formData);
-    const supabase = await createServerSupabaseClient();
-
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
-    if (authError || !user) {
-      return { success: false, error: "Unauthorized. Please log in." };
+    const userId = await getAuthenticatedUserId();
+    if (!userId) {
+      return { success: false, error: "Unauthorized. Please log in to create setups." };
     }
+
+    const validated = createSetupSchema.parse(formData);
+    const supabase = createAdminClient();
 
     const avgEntry = (validated.entryMin + validated.entryMax) / 2;
     const riskReward = calculateRiskReward(
@@ -78,7 +76,7 @@ export async function createTradingSetup(
       : [];
 
     const { error } = await supabase.from("trading_setups").insert({
-      user_id: user.id,
+      user_id: userId,
       symbol: validated.symbol,
       direction: validated.direction,
       entry_min: validated.entryMin,
@@ -117,12 +115,7 @@ export async function updateTradingSetup(
 ): Promise<UpdateStatusResult> {
   try {
     const validated = createSetupSchema.parse(formData);
-    const supabase = await createServerSupabaseClient();
-
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
-    if (authError || !user) {
-      return { success: false, error: "Unauthorized. Please log in." };
-    }
+    const supabase = createAdminClient();
 
     const avgEntry = (validated.entryMin + validated.entryMax) / 2;
     const riskReward = calculateRiskReward(
@@ -176,12 +169,7 @@ export async function setSetupToBreakeven(
   setupId: string
 ): Promise<UpdateStatusResult> {
   try {
-    const supabase = await createServerSupabaseClient();
-
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
-    if (authError || !user) {
-      return { success: false, error: "Unauthorized. Please log in." };
-    }
+    const supabase = createAdminClient();
 
     // 1. Fetch current setup to determine entry midpoint
     const { data: setup, error: fetchError } = await supabase
@@ -231,17 +219,15 @@ export async function deleteTradingSetup(
   setupId: string
 ): Promise<UpdateStatusResult> {
   try {
-    const supabase = await createServerSupabaseClient();
+    const userId = await getAuthenticatedUserId();
+    const supabase = createAdminClient();
 
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
-    if (authError || !user) {
-      return { success: false, error: "Unauthorized. Please log in." };
+    let query = supabase.from("trading_setups").delete().eq("id", setupId);
+    if (userId) {
+      query = query.eq("user_id", userId);
     }
 
-    const { error } = await supabase
-      .from("trading_setups")
-      .delete()
-      .eq("id", setupId);
+    const { error } = await query;
 
     if (error) {
       console.error("Failed to delete setup:", error.message);

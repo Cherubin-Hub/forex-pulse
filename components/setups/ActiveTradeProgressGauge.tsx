@@ -1,7 +1,6 @@
 "use client";
 
-import { useTransition } from "react";
-import { ShieldCheck, AlertTriangle, Sparkles, Loader2 } from "lucide-react";
+import { AlertTriangle, Sparkles } from "lucide-react";
 import type { TradingSetup } from "@/types/setup";
 import type { PriceQuote } from "@/types/market";
 import { formatPrice } from "@/lib/formatters";
@@ -9,7 +8,6 @@ import {
   calculateActiveTradeMetrics,
   calculatePendingTradeProximity,
 } from "@/lib/tradeProgressUtils";
-import { setSetupToBreakeven } from "@/app/actions/setupActions";
 import { cn } from "@/lib/utils";
 
 interface ActiveTradeProgressGaugeProps {
@@ -18,7 +16,7 @@ interface ActiveTradeProgressGaugeProps {
 }
 
 export function ActiveTradeProgressGauge({ setup, quote }: ActiveTradeProgressGaugeProps) {
-  const [isPending, startTransition] = useTransition();
+
 
   if (!quote || quote.price === null) return null;
 
@@ -63,15 +61,6 @@ export function ActiveTradeProgressGauge({ setup, quote }: ActiveTradeProgressGa
 
   const metrics = calculateActiveTradeMetrics(setup, quote);
   if (!metrics) return null;
-
-  const handleQuickBreakeven = () => {
-    startTransition(async () => {
-      const res = await setSetupToBreakeven(setup.id);
-      if (!res.success) {
-        alert(`Failed to set Breakeven: ${res.error}`);
-      }
-    });
-  };
 
   // Convert -100% to +100% progress to 0% - 100% gauge position
   // 0% on gauge = Stop Loss, 50% = Entry Midpoint, 100% = Take Profit 1
@@ -138,27 +127,6 @@ export function ActiveTradeProgressGauge({ setup, quote }: ActiveTradeProgressGa
           <span className="text-emerald-500 font-medium">TP1 ({metrics.pipsToTarget}p)</span>
         </div>
       </div>
-
-      {/* Breakeven Capital Protection Advisory Banner */}
-      {metrics.isBreakevenEligible && (
-        <div className="flex items-center justify-between rounded-lg border border-sky-500/30 bg-sky-500/10 px-2.5 py-1.5 text-xs text-sky-500">
-          <div className="flex items-center gap-1.5 min-w-0">
-            <ShieldCheck className="h-3.5 w-3.5 shrink-0" />
-            <span className="text-[11px] font-medium truncate">
-              +1.0R reached. Secure capital at Breakeven.
-            </span>
-          </div>
-
-          <button
-            type="button"
-            disabled={isPending}
-            onClick={handleQuickBreakeven}
-            className="ml-2 inline-flex items-center gap-1 shrink-0 rounded bg-sky-500 px-2 py-0.5 text-[10px] font-bold text-white hover:bg-sky-600 transition-colors disabled:opacity-50"
-          >
-            {isPending ? <Loader2 className="h-3 w-3 animate-spin" /> : "Set BE"}
-          </button>
-        </div>
-      )}
 
       {/* Warning Alert if Stop Imminent */}
       {metrics.protectionStatus === "STOP_IMMINENT" && (
