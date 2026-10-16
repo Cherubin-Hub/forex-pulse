@@ -13,7 +13,15 @@ export function SetupRealtimeListener() {
   const router = useRouter();
 
   useEffect(() => {
-    const supabase = createClient();
+    let supabase: ReturnType<typeof createClient> | null = null;
+    try {
+      supabase = createClient();
+    } catch (err) {
+      console.debug("[Realtime] Supabase unavailable for setup listener:", err);
+      return;
+    }
+
+    if (!supabase) return;
 
     const channel = supabase
       .channel("trading_setups_realtime")
@@ -32,7 +40,7 @@ export function SetupRealtimeListener() {
       .subscribe();
 
     return () => {
-      supabase.removeChannel(channel);
+      supabase?.removeChannel(channel);
     };
   }, [router]);
 

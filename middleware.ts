@@ -23,11 +23,15 @@ function normalizeBaseUrl(rawUrl?: string | null, fallback = "http://localhost:3
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  // 1. Allow static resources and public SSO callback endpoint
+  // 1. Allow static resources, webmanifest, and public SSO callback endpoint
   const isSSOEndpoint = pathname === "/api/auth/sso";
   const isDiagnosticSeed = pathname.startsWith("/api/seed");
+  const isManifest =
+    pathname === "/manifest.webmanifest" ||
+    pathname === "/manifest.json" ||
+    pathname === "/favicon.ico";
 
-  if (isSSOEndpoint || isDiagnosticSeed) {
+  if (isSSOEndpoint || isDiagnosticSeed || isManifest) {
     return NextResponse.next();
   }
 
@@ -72,6 +76,6 @@ export async function middleware(request: NextRequest) {
 
 export const config = {
   matcher: [
-    "/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
+    "/((?!_next/static|_next/image|favicon.ico|manifest\\.webmanifest|.*\\.(?:svg|png|jpg|jpeg|gif|webp|webmanifest)$).*)",
   ],
 };

@@ -284,7 +284,16 @@ export function AutoTradeAutomationProvider({
 
   // 5. Supabase Realtime Listener (sync database changes across browser tabs)
   useEffect(() => {
-    const supabase = createClient();
+    let supabase: ReturnType<typeof createClient> | null = null;
+    try {
+      supabase = createClient();
+    } catch (err) {
+      console.debug("[Realtime] Supabase unavailable for auto-sync, running offline:", err);
+      return;
+    }
+
+    if (!supabase) return;
+
     const channel = supabase
       .channel("trading_setups_auto_sync")
       .on(
@@ -301,7 +310,7 @@ export function AutoTradeAutomationProvider({
       .subscribe();
 
     return () => {
-      supabase.removeChannel(channel);
+      supabase?.removeChannel(channel);
     };
   }, [router]);
 
