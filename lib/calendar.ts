@@ -112,3 +112,96 @@ export function calculateCalendarWeeklyMetrics(events: EconomicEvent[]): Calenda
     primaryCurrencyCount,
   };
 }
+
+export type EconomicSurprise = "BEAT" | "MISS" | "IN_LINE" | "NEUTRAL" | "PENDING";
+
+export interface EventSurpriseInfo {
+  surprise: EconomicSurprise;
+  colorClass: string;
+  badgeLabel?: string;
+  isBeat: boolean;
+  isMiss: boolean;
+}
+
+/**
+ * Calculates macroeconomic surprise deviation (Beat vs Miss) against forecast.
+ * Handles inverted metrics like Unemployment Rate and Jobless Claims where lower is better.
+ */
+export function getEventSurprise(event: EconomicEvent): EventSurpriseInfo {
+  if (!event.actual || event.actual === "—") {
+    return {
+      surprise: "PENDING",
+      colorClass: "text-muted-foreground",
+      isBeat: false,
+      isMiss: false,
+    };
+  }
+
+  // Qualitative checks (e.g. FOMC Minutes)
+  if (!event.forecast) {
+    return {
+      surprise: "NEUTRAL",
+      colorClass: "text-foreground font-semibold",
+      isBeat: false,
+      isMiss: false,
+    };
+  }
+
+  const cleanNum = (val: string) => {
+    const match = val.replace(/,/g, "").match(/-?\d+(\.\d+)?/);
+    return match ? parseFloat(match[0]) : NaN;
+  };
+
+  const actNum = cleanNum(event.actual);
+  const fctNum = cleanNum(event.forecast);
+
+  if (isNaN(actNum) || isNaN(fctNum)) {
+    return {
+      surprise: "NEUTRAL",
+      colorClass: "text-foreground font-semibold",
+      isBeat: false,
+      isMiss: false,
+    };
+  }
+
+  // Inverted metrics where lower is better (Unemployment Rate, Initial Claims)
+  const isInverted =
+    /unemployment|jobless|claims/i.test(event.title) &&
+    !/employment change|payrolls|nfp/i.test(event.title);
+
+  const diff = actNum - fctNum;
+  const isBeat = isInverted ? diff < -0.001 : diff > 0.001;
+  const isMiss = isInverted ? diff > 0.001 : diff < -0.001;
+
+  if (isBeat) {
+    const sign = diff > 0 ? "+" : "";
+    const formattedDiff = Math.abs(diff) < 1 ? diff.toFixed(1) : Math.round(diff).toString();
+    return {
+      surprise: "BEAT",
+      colorClass: "text-emerald-500 font-semibold",
+      badgeLabel: `${sign}${formattedDiff}`,
+      isBeat: true,
+      isMiss: false,
+    };
+  }
+
+  if (isMiss) {
+    const sign = diff > 0 ? "+" : "";
+    const formattedDiff = Math.abs(diff) < 1 ? diff.toFixed(1) : Math.round(diff).toString();
+    return {
+      surprise: "MISS",
+      colorClass: "text-rose-500 font-semibold",
+      badgeLabel: `${sign}${formattedDiff}`,
+      isBeat: false,
+      isMiss: true,
+    };
+  }
+
+  return {
+    surprise: "IN_LINE",
+    colorClass: "text-foreground font-semibold",
+    badgeLabel: "In-line",
+    isBeat: false,
+    isMiss: false,
+  };
+}
