@@ -16,6 +16,7 @@ import { Sparkline } from "@/components/market/Sparkline";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
+import { useLiveMarket } from "@/components/providers/AutoTradeAutomationProvider";
 
 interface MarketsTableProps {
   quotes: PriceQuote[];
@@ -23,7 +24,9 @@ interface MarketsTableProps {
 
 type FilterCategory = "ALL" | InstrumentCategory;
 
-export function MarketsTable({ quotes }: MarketsTableProps) {
+export function MarketsTable({ quotes: initialQuotes }: MarketsTableProps) {
+  const { quotes: liveQuotes } = useLiveMarket();
+  const quotes = liveQuotes.length > 0 ? liveQuotes : initialQuotes;
   const [activeCategory, setActiveCategory] = useState<FilterCategory>("ALL");
   const [searchQuery, setSearchQuery] = useState("");
 

@@ -1,6 +1,7 @@
 "use client";
 
 import { useTransition } from "react";
+import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { 
   ShieldAlert, 
@@ -46,6 +47,7 @@ function getVolatilityBadge(vol: VolatilityExpectation): { label: string; color:
 }
 
 export function ReportCard({ report }: { report: SessionReport }) {
+  const router = useRouter();
   const [isDeleting, startDelete] = useTransition();
   const bias = getBiasBadge(report.bias);
   const vol = getVolatilityBadge(report.volatility);
@@ -56,6 +58,7 @@ export function ReportCard({ report }: { report: SessionReport }) {
       const result = await deleteSessionReport(report.id);
       if (result.success) {
         toast.success("Session Report Deleted");
+        router.refresh();
       } else {
         toast.error(`Failed to delete: ${result.error}`);
       }

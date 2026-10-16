@@ -11,12 +11,13 @@ import React, {
 } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { Zap, CheckCircle2, XCircle, AlertTriangle, Cpu } from "lucide-react";
+import { Zap, CheckCircle2, XCircle, AlertTriangle, Cpu, FileText } from "lucide-react";
 import type { PriceQuote } from "@/types/market";
 import type { TradingSetup } from "@/types/setup";
 import { MOCK_QUOTES } from "@/lib/mock/quotes";
 import { updateSetupStatus } from "@/app/actions/setupActions";
 import { runMarketScanAction } from "@/app/actions/scannerActions";
+import { autoGenerateSessionReportAction } from "@/app/actions/reportActions";
 import { evaluateSetupAutoResolution } from "@/lib/services/autoExecutionEngine";
 import { createClient } from "@/lib/supabase/client";
 import {
@@ -70,6 +71,7 @@ export function AutoTradeAutomationProvider({
   const inFlightSetupsRef = useRef<Set<string>>(new Set());
   const resolvedSetupsRef = useRef<Set<string>>(new Set());
   const isScannerRunningRef = useRef<boolean>(false);
+  const isReportCheckRunningRef = useRef<boolean>(false);
 
   // 2. Real-time Market Stream: Prioritizes Finnhub WebSocket, falls back to simulated micro-ticks
   useEffect(() => {
@@ -98,11 +100,23 @@ export function AutoTradeAutomationProvider({
             if (payload.type === "trade" && Array.isArray(payload.data)) {
               setQuotes((currentQuotes) => {
                 let updated = [...currentQuotes];
+                const nowIso = new Date().toISOString();
                 for (const trade of payload.data) {
                   const internalSymbol = SYMBOL_MAP_FROM_FINNHUB[trade.s];
                   if (internalSymbol && trade.p) {
                     updated = updated.map((q) =>
-                      q.symbol === internalSymbol ? { ...q, price: trade.p } : q
+                      q.symbol === internalSymbol
+                        ? {
+                            ...q,
+                            price: trade.p,
+                            high: q.high !== null ? Math.max(q.high, trade.p) : trade.p,
+                            low: q.low !== null ? Math.min(q.low, trade.p) : trade.p,
+                            timestamp: nowIso,
+                            sparkline: q.sparkline && q.sparkline.length > 0
+                              ? [...q.sparkline.slice(1), trade.p]
+                              : [trade.p],
+                          }
+                        : q
                     );
                   }
                 }
@@ -131,25 +145,44 @@ export function AutoTradeAutomationProvider({
     // Micro-tick simulation loop: runs continuously if no Finnhub key, or as a weekend/heartbeat pulse
     fallbackTimer = setInterval(() => {
       setQuotes((currentQuotes) => {
-        const targetIndex = Math.floor(Math.random() * currentQuotes.length);
-        const target = currentQuotes[targetIndex];
-        if (!target || target.price === null) return currentQuotes;
+        if (currentQuotes.length === 0) return currentQuotes;
+        // Select 1 or 2 random pairs to tick per pulse
+        const numTicks = Math.random() > 0.4 ? 2 : 1;
+        const indicesToTick = new Set<number>();
+        while (indicesToTick.size < numTicks && indicesToTick.size < currentQuotes.length) {
+          indicesToTick.add(Math.floor(Math.random() * currentQuotes.length));
+        }
 
-        const isJpy = target.symbol.includes("JPY");
-        const isGold = target.symbol === "XAUUSD";
-        const deltaPip = (Math.random() * 0.8 - 0.4) * (isGold ? 0.08 : isJpy ? 0.03 : 0.00008);
+        const nowIso = new Date().toISOString();
 
-        const nextPrice = Number(
-          (target.price + deltaPip).toFixed(
-            isGold ? 2 : isJpy ? 3 : 5
-          )
-        );
+        return currentQuotes.map((q, idx) => {
+          if (!indicesToTick.has(idx) || q.price === null) return q;
 
-        return currentQuotes.map((q, idx) =>
-          idx === targetIndex ? { ...q, price: nextPrice } : q
-        );
+          const isJpy = q.symbol.includes("JPY");
+          const isGold = q.symbol === "XAUUSD";
+          const deltaPip = (Math.random() * 0.8 - 0.4) * (isGold ? 0.08 : isJpy ? 0.03 : 0.00008);
+
+          const nextPrice = Number(
+            (q.price + deltaPip).toFixed(
+              isGold ? 2 : isJpy ? 3 : 5
+            )
+          );
+
+          const updatedSparkline = q.sparkline && q.sparkline.length > 0
+            ? [...q.sparkline.slice(1), nextPrice]
+            : [nextPrice];
+
+          return {
+            ...q,
+            price: nextPrice,
+            high: q.high !== null ? Math.max(q.high, nextPrice) : nextPrice,
+            low: q.low !== null ? Math.min(q.low, nextPrice) : nextPrice,
+            timestamp: nowIso,
+            sparkline: updatedSparkline,
+          };
+        });
       });
-    }, 3200);
+    }, 1800);
 
     return () => {
       if (socket) socket.close();
@@ -272,17 +305,68 @@ export function AutoTradeAutomationProvider({
     }
   }, [router]);
 
-  // Run auto-scanner every 3 minutes
+  // Run auto-scanner on mount (after 2.5s) and every 3 minutes
   useEffect(() => {
+    const initialTimer = setTimeout(() => {
+      executeAutoScan(true);
+    }, 2500);
+
     const THREE_MINUTES = 3 * 60 * 1000;
     const interval = setInterval(() => {
       executeAutoScan(true);
     }, THREE_MINUTES);
 
-    return () => clearInterval(interval);
+    return () => {
+      clearTimeout(initialTimer);
+      clearInterval(interval);
+    };
   }, [executeAutoScan]);
 
-  // 5. Supabase Realtime Listener (sync database changes across browser tabs)
+  // 5. Automated Session Report Engine: Periodically checks and synthesizes pre-session briefings
+  const executeAutoReportCheck = useCallback(async () => {
+    if (isReportCheckRunningRef.current) return;
+    isReportCheckRunningRef.current = true;
+
+    try {
+      const res = await autoGenerateSessionReportAction();
+      if (res.success && res.generated && res.report) {
+        const sessionLabel = res.session?.replace("_", " ") ?? "Session";
+        toast.success(`📋 ${sessionLabel} Briefing Auto-Generated!`, {
+          description: res.report.title,
+          icon: <FileText className="h-4 w-4 text-primary" />,
+          action: {
+            label: "View Report",
+            onClick: () => router.push("/reports"),
+          },
+          duration: 10000,
+        });
+        router.refresh();
+      }
+    } catch (err) {
+      console.warn("[AutoReportCheck] Background check failed:", err);
+    } finally {
+      isReportCheckRunningRef.current = false;
+    }
+  }, [router]);
+
+  // Run auto-report verification on mount (after 4s) and every 5 minutes
+  useEffect(() => {
+    const initialTimer = setTimeout(() => {
+      executeAutoReportCheck();
+    }, 4000);
+
+    const FIVE_MINUTES = 5 * 60 * 1000;
+    const interval = setInterval(() => {
+      executeAutoReportCheck();
+    }, FIVE_MINUTES);
+
+    return () => {
+      clearTimeout(initialTimer);
+      clearInterval(interval);
+    };
+  }, [executeAutoReportCheck]);
+
+  // 6. Supabase Realtime Listener (sync database changes across browser tabs)
   useEffect(() => {
     let supabase: ReturnType<typeof createClient> | null = null;
     try {
@@ -295,13 +379,24 @@ export function AutoTradeAutomationProvider({
     if (!supabase) return;
 
     const channel = supabase
-      .channel("trading_setups_auto_sync")
+      .channel("forex_pulse_auto_sync")
       .on(
         "postgres_changes",
         {
           event: "*",
           schema: "public",
           table: "trading_setups",
+        },
+        () => {
+          router.refresh();
+        }
+      )
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "session_reports",
         },
         () => {
           router.refresh();

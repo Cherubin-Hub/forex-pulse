@@ -1,6 +1,8 @@
 "use client";
 
 import { useState, useEffect, useTransition } from "react";
+import { useRouter } from "next/navigation";
+import { toast } from "sonner";
 import { 
   Trash2, 
   Loader2,
@@ -24,6 +26,7 @@ interface SetupStatusActionsProps {
 }
 
 export function SetupStatusActions({ setup }: SetupStatusActionsProps) {
+  const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [isPostMortemOpen, setIsPostMortemOpen] = useState(false);
   const [review, setReview] = useState<TradePostMortem | null>(null);
@@ -36,11 +39,14 @@ export function SetupStatusActions({ setup }: SetupStatusActionsProps) {
   }, [setup.id]);
 
   const handleDelete = () => {
-    if (!confirm("Are you sure you want to delete this trading setup?")) return;
+    if (!confirm(`Are you sure you want to delete the ${setup.symbol} setup?`)) return;
     startTransition(async () => {
       const result = await deleteTradingSetup(setup.id);
-      if (!result.success) {
-        alert(`Failed to delete setup: ${result.error}`);
+      if (result.success) {
+        toast.success(`Deleted ${setup.symbol} setup`);
+        router.refresh();
+      } else {
+        toast.error(`Failed to delete setup: ${result.error}`);
       }
     });
   };

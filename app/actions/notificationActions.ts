@@ -1,7 +1,8 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { createServerSupabaseClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
+import { getAuthenticatedUserId } from "@/lib/auth/user";
 import type { NotificationType, NotificationPriority } from "@/types/notification";
 
 export interface ActionResult {
@@ -14,7 +15,7 @@ export interface ActionResult {
  */
 export async function markNotificationReadAction(id: string): Promise<ActionResult> {
   try {
-    const supabase = await createServerSupabaseClient();
+    const supabase = createAdminClient();
     const { error } = await supabase
       .from("notifications")
       .update({ read: true })
@@ -34,15 +35,19 @@ export async function markNotificationReadAction(id: string): Promise<ActionResu
 }
 
 /**
- * Marks all notifications as read in Supabase.
+ * Marks all notifications as read in Supabase for the current user.
  */
 export async function markAllNotificationsReadAction(): Promise<ActionResult> {
   try {
-    const supabase = await createServerSupabaseClient();
-    const { error } = await supabase
-      .from("notifications")
-      .update({ read: true })
-      .eq("read", false);
+    const userId = await getAuthenticatedUserId();
+    const supabase = createAdminClient();
+
+    let query = supabase.from("notifications").update({ read: true }).eq("read", false);
+    if (userId) {
+      query = query.or(`user_id.eq.${userId},user_id.is.null`);
+    }
+
+    const { error } = await query;
 
     if (error) {
       console.warn("Failed to mark all notifications read:", error.message);
@@ -62,7 +67,7 @@ export async function markAllNotificationsReadAction(): Promise<ActionResult> {
  */
 export async function deleteNotificationAction(id: string): Promise<ActionResult> {
   try {
-    const supabase = await createServerSupabaseClient();
+    const supabase = createAdminClient();
     const { error } = await supabase
       .from("notifications")
       .delete()
@@ -82,7 +87,7 @@ export async function deleteNotificationAction(id: string): Promise<ActionResult
 }
 
 /**
- * Broadcasts or inserts a new notification into Supabase.
+ * Broadcasts or inserts a new notification into Supabase for the authenticated user.
  */
 export async function pushNotificationAction(params: {
   type: NotificationType;
@@ -94,13 +99,13 @@ export async function pushNotificationAction(params: {
   actionLabel?: string;
 }): Promise<ActionResult> {
   try {
-    const supabase = await createServerSupabaseClient();
-    const { data: { user } } = await supabase.auth.getUser();
+    const userId = await getAuthenticatedUserId();
+    const supabase = createAdminClient();
 
     const { error } = await supabase
       .from("notifications")
       .insert({
-        user_id: user?.id ?? null,
+        user_id: userId,
         type: params.type,
         priority: params.priority,
         title: params.title,

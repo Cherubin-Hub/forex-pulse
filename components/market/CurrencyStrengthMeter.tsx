@@ -5,12 +5,15 @@ import { Zap, Layers } from "lucide-react";
 import type { PriceQuote } from "@/types/market";
 import { calculateCurrencyStrengths, type CurrencyStrength } from "@/lib/correlationUtils";
 import { cn } from "@/lib/utils";
+import { useLiveMarket } from "@/components/providers/AutoTradeAutomationProvider";
 
 interface CurrencyStrengthMeterProps {
   quotes: PriceQuote[];
 }
 
-export function CurrencyStrengthMeter({ quotes }: CurrencyStrengthMeterProps) {
+export function CurrencyStrengthMeter({ quotes: initialQuotes }: CurrencyStrengthMeterProps) {
+  const { quotes: liveQuotes } = useLiveMarket();
+  const quotes = liveQuotes.length > 0 ? liveQuotes : initialQuotes;
   const { strengths, divergence } = useMemo(() => {
     return calculateCurrencyStrengths(quotes);
   }, [quotes]);

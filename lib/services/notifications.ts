@@ -1,6 +1,7 @@
 import type { SystemNotification } from "@/types/notification";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { mapRowToNotification } from "@/lib/supabase/mappers";
+import { getAuthenticatedUserId } from "@/lib/auth/user";
 
 /**
  * Single entry point for fetching notifications.
@@ -8,10 +9,17 @@ import { mapRowToNotification } from "@/lib/supabase/mappers";
  */
 export async function getNotifications(): Promise<SystemNotification[]> {
   try {
+    const userId = await getAuthenticatedUserId();
     const supabase = await createServerSupabaseClient();
-    const { data, error } = await supabase
-      .from("notifications")
-      .select("*")
+
+    let query = supabase.from("notifications").select("*");
+    if (userId) {
+      query = query.or(`user_id.eq.${userId},user_id.is.null`);
+    } else {
+      query = query.is("user_id", null);
+    }
+
+    const { data, error } = await query
       .order("created_at", { ascending: false })
       .limit(50);
 

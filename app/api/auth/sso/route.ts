@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { verifySSOToken } from "@/lib/sso/verifier";
 import { signSessionPayload } from "@/lib/sso/session";
+import { createAdminClient } from "@/lib/supabase/admin";
 
 export const dynamic = "force-dynamic";
 
@@ -27,12 +28,25 @@ export async function GET(request: NextRequest) {
     );
   }
 
-  // 2. Prepare redirect response to the target dashboard or requested deep-link
+  // 2. Provision or sync user identity in Forex Pulse Supabase instance (so foreign keys succeed)
+  try {
+    const admin = createAdminClient();
+    await admin.auth.admin.createUser({
+      id: result.payload.userId,
+      email: result.payload.email,
+      email_confirm: true,
+      user_metadata: { email: result.payload.email },
+    });
+  } catch {
+    // User already provisioned in auth.users, continue
+  }
+
+  // 3. Prepare redirect response to the target dashboard or requested deep-link
   const sanitizedReturnTo = returnTo.startsWith("/") ? returnTo : "/";
   const destinationUrl = new URL(sanitizedReturnTo, request.url);
   const response = NextResponse.redirect(destinationUrl);
 
-  // 3. Issue cryptographically signed tamper-proof session cookie
+  // 4. Issue cryptographically signed tamper-proof session cookie
   try {
     const signedSession = await signSessionPayload({
       email: result.payload.email,
