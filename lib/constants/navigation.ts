@@ -28,7 +28,7 @@ export const NAV_SECTIONS: NavSection[] = [
   {
     label: "Overview",
     items: [
-      { title: "Dashboard", href: "/", icon: LayoutDashboard },
+      { title: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
       { title: "Markets", href: "/markets", icon: CandlestickChart },
       { title: "Gold", href: "/gold", icon: Coins },
       { title: "Technical Analysis", href: "/technical", icon: LineChart },

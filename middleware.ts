@@ -23,15 +23,16 @@ function normalizeBaseUrl(rawUrl?: string | null, fallback = "http://localhost:3
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  // 1. Allow static resources, webmanifest, and public SSO callback endpoint
+  // 1. Allow static resources, webmanifest, and public SSO callback / logout endpoints
   const isSSOEndpoint = pathname === "/api/auth/sso";
+  const isLogoutEndpoint = pathname === "/api/auth/logout";
   const isDiagnosticSeed = pathname.startsWith("/api/seed");
   const isManifest =
     pathname === "/manifest.webmanifest" ||
     pathname === "/manifest.json" ||
     pathname === "/favicon.ico";
 
-  if (isSSOEndpoint || isDiagnosticSeed || isManifest) {
+  if (isSSOEndpoint || isLogoutEndpoint || isDiagnosticSeed || isManifest) {
     return NextResponse.next();
   }
 
@@ -47,7 +48,7 @@ export async function middleware(request: NextRequest) {
       const redirectUrl = new URL("/login", gatewayUrl);
       redirectUrl.searchParams.set("app", "forex-pulse");
 
-      if (pathname !== "/" && !pathname.startsWith("/login")) {
+      if (pathname !== "/" && pathname !== "/dashboard" && !pathname.startsWith("/login")) {
         redirectUrl.searchParams.set("returnTo", pathname);
       }
 
@@ -67,7 +68,7 @@ export async function middleware(request: NextRequest) {
   // 4. If already authenticated via Gateway and visiting /login, redirect to main dashboard
   if (pathname === "/login") {
     const dashboardUrl = request.nextUrl.clone();
-    dashboardUrl.pathname = "/";
+    dashboardUrl.pathname = "/dashboard";
     return NextResponse.redirect(dashboardUrl);
   }
 

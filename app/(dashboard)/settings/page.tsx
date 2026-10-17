@@ -1,6 +1,7 @@
 import { SettingsForm } from "@/components/settings/SettingsForm";
 import { DatabaseSeedCard } from "@/components/settings/DatabaseSeedCard";
 import { FinnhubApiKeyCard } from "@/components/settings/FinnhubApiKeyCard";
+import { HeadlessAutomationCard } from "@/components/settings/HeadlessAutomationCard";
 
 export default function SettingsPage() {
   return (
@@ -11,6 +12,9 @@ export default function SettingsPage() {
           Personalize analysis, execution rules, and manage cloud database synchronization.
         </p>
       </div>
+
+      {/* 24/7 Headless Server Daemon & Cron Engine */}
+      <HeadlessAutomationCard />
 
       {/* Live Market Data Feed Configuration */}
       <FinnhubApiKeyCard />

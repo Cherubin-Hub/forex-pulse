@@ -2,11 +2,12 @@
 
 import { useState, useEffect } from "react";
 import { usePathname } from "next/navigation";
-import { Search } from "lucide-react";
+import { Search, Layers } from "lucide-react";
 import type { EconomicEvent } from "@/types/calendar";
 import type { TradingSetup } from "@/types/setup";
 import type { SystemNotification } from "@/types/notification";
 import { NAV_SECTIONS } from "@/lib/constants/navigation";
+import { normalizeBaseUrl } from "@/lib/sso/session";
 import { ThemeToggle } from "@/components/layout/ThemeToggle";
 import { MobileSidebar } from "@/components/layout/MobileSidebar";
 import { UserNav } from "@/components/layout/UserNav";
@@ -14,6 +15,9 @@ import { NotificationsDropdown } from "@/components/notifications/NotificationsD
 import { CommandPalette } from "@/components/command/CommandPalette";
 
 function getPageTitle(pathname: string): string {
+  if (pathname === "/" || pathname === "/dashboard") {
+    return "Dashboard";
+  }
   const allItems = NAV_SECTIONS.flatMap((section) => section.items);
   const match = allItems.find((item) => item.href === pathname);
   return match?.title ?? "ForexPulse";
@@ -29,6 +33,9 @@ export function Header({ notifications, events, setups }: HeaderProps) {
   const pathname = usePathname();
   const title = getPageTitle(pathname);
   const [isCommandOpen, setIsCommandOpen] = useState(false);
+
+  const rawGatewayUrl = process.env.NEXT_PUBLIC_GATEWAY_URL || "http://localhost:3000";
+  const gatewayUrl = normalizeBaseUrl(rawGatewayUrl, "http://localhost:3000");
 
   // Global Ctrl+K / Cmd+K keyboard shortcut listener
   useEffect(() => {
@@ -51,8 +58,19 @@ export function Header({ notifications, events, setups }: HeaderProps) {
           <h1 className="text-lg font-semibold tracking-tight">{title}</h1>
         </div>
 
-        {/* Global Quick Search Button */}
+        {/* Header Action Items */}
         <div className="flex items-center gap-2">
+          {/* Return to Pulse Gateway Button */}
+          <a
+            href={`${gatewayUrl}/portal`}
+            className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-secondary/50 px-2.5 py-1.5 text-xs font-medium text-foreground hover:bg-secondary hover:border-emerald-500/40 hover:text-emerald-500 transition-all shadow-xs"
+            title="Return to Pulse Gateway Hub"
+          >
+            <Layers className="h-3.5 w-3.5 text-emerald-500" />
+            <span className="hidden sm:inline font-medium">Pulse Gateway</span>
+          </a>
+
+          {/* Global Quick Search Button */}
           <button
             type="button"
             onClick={() => setIsCommandOpen(true)}
