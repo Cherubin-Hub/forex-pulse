@@ -23,16 +23,17 @@ function normalizeBaseUrl(rawUrl?: string | null, fallback = "http://localhost:3
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  // 1. Allow static resources, webmanifest, and public SSO callback / logout endpoints
+  // 1. Allow static resources, webmanifest, cron webhooks, and public SSO callback / logout endpoints
   const isSSOEndpoint = pathname === "/api/auth/sso";
   const isLogoutEndpoint = pathname === "/api/auth/logout";
   const isDiagnosticSeed = pathname.startsWith("/api/seed");
+  const isCronEndpoint = pathname.startsWith("/api/cron");
   const isManifest =
     pathname === "/manifest.webmanifest" ||
     pathname === "/manifest.json" ||
     pathname === "/favicon.ico";
 
-  if (isSSOEndpoint || isLogoutEndpoint || isDiagnosticSeed || isManifest) {
+  if (isSSOEndpoint || isLogoutEndpoint || isDiagnosticSeed || isCronEndpoint || isManifest) {
     return NextResponse.next();
   }
 
