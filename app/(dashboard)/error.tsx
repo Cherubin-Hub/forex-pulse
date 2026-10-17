@@ -47,7 +47,7 @@ export default function DashboardError({
         <CardFooter className="flex items-center justify-between gap-3 pt-2">
           {/* 👇 REPLACED: Styled Link instead of Button asChild */}
           <Link
-            href="/"
+            href="/dashboard"
             className={cn(buttonVariants({ variant: "outline", size: "sm" }), "gap-1.5")}
           >
             <Home className="h-3.5 w-3.5" />

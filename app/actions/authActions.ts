@@ -41,5 +41,11 @@ export async function logout(redirectToGateway = true) {
 
   const rawGatewayUrl = process.env.NEXT_PUBLIC_GATEWAY_URL || "http://localhost:3000";
   const gatewayUrl = normalizeBaseUrl(rawGatewayUrl, "http://localhost:3000");
-  redirect(`${gatewayUrl}/login`);
+  const gatewayLoginUrl = `${gatewayUrl}/login`;
+
+  if (redirectToGateway) {
+    redirect(`${gatewayUrl}/api/auth/logout?returnTo=${encodeURIComponent(gatewayLoginUrl)}`);
+  } else {
+    redirect("/login");
+  }
 }

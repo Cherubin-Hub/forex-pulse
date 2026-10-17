@@ -2,12 +2,15 @@
 
 import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Activity, Menu, X } from "lucide-react";
+import { Activity, Menu, X, Layers } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { SidebarNav } from "@/components/layout/SidebarNav";
+import { normalizeBaseUrl } from "@/lib/sso/session";
 
 export function MobileSidebar() {
   const [isOpen, setIsOpen] = useState(false);
+  const rawGatewayUrl = process.env.NEXT_PUBLIC_GATEWAY_URL || "http://localhost:3000";
+  const gatewayUrl = normalizeBaseUrl(rawGatewayUrl, "http://localhost:3000");
 
   const close = () => setIsOpen(false);
 
@@ -75,6 +78,17 @@ export function MobileSidebar() {
               </div>
 
               <SidebarNav pillId="mobile-active-pill" onNavigate={close} />
+
+              <div className="border-t border-border p-3">
+                <a
+                  href={`${gatewayUrl}/portal`}
+                  onClick={close}
+                  className="flex h-9 w-full items-center gap-3 rounded-md px-3 text-sm font-medium text-muted-foreground transition-colors hover:bg-sidebar-accent hover:text-emerald-500"
+                >
+                  <Layers className="h-4 w-4 shrink-0 text-emerald-500" />
+                  <span>Pulse Gateway</span>
+                </a>
+              </div>
             </motion.aside>
           </div>
         )}

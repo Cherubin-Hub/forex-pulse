@@ -2,15 +2,18 @@
 
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Activity, ChevronsLeft } from "lucide-react";
+import { Activity, ChevronsLeft, Layers } from "lucide-react";
 import { SidebarNav } from "@/components/layout/SidebarNav";
 import { cn } from "@/lib/utils";
+import { normalizeBaseUrl } from "@/lib/sso/session";
 
 const EXPANDED_WIDTH = 248;
 const COLLAPSED_WIDTH = 72;
 
 export function Sidebar() {
   const [isCollapsed, setIsCollapsed] = useState(false);
+  const rawGatewayUrl = process.env.NEXT_PUBLIC_GATEWAY_URL || "http://localhost:3000";
+  const gatewayUrl = normalizeBaseUrl(rawGatewayUrl, "http://localhost:3000");
 
   return (
     <motion.aside
@@ -41,6 +44,18 @@ export function Sidebar() {
       </div>
 
       <SidebarNav isCollapsed={isCollapsed} pillId="desktop-active-pill" />
+
+      {/* Return to Pulse Gateway Hub */}
+      <div className="border-t border-border p-2">
+        <a
+          href={`${gatewayUrl}/portal`}
+          title={isCollapsed ? "Pulse Gateway Hub" : undefined}
+          className="flex h-9 w-full items-center gap-3 rounded-md px-3 text-sm text-muted-foreground transition-colors hover:bg-sidebar-accent hover:text-emerald-500"
+        >
+          <Layers className="h-4 w-4 shrink-0 text-emerald-500" />
+          {!isCollapsed && <span className="whitespace-nowrap font-medium">Pulse Gateway</span>}
+        </a>
+      </div>
 
       {/* Collapse button */}
       <div className="border-t border-border p-3">

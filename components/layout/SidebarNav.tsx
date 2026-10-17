@@ -16,7 +16,9 @@ export function SidebarNav({ isCollapsed = false, pillId, onNavigate }: SidebarN
   const pathname = usePathname();
 
   const isActive = (href: string) =>
-    href === "/" ? pathname === "/" : pathname === href;
+    href === "/dashboard"
+      ? pathname === "/dashboard" || pathname === "/"
+      : pathname === href;
 
   return (
     <nav className="flex-1 space-y-6 overflow-y-auto overflow-x-hidden px-3 py-4">

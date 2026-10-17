@@ -22,7 +22,7 @@ export default function DashboardNotFound() {
         <CardContent className="pt-2">
           <div className="grid grid-cols-2 gap-2 text-xs">
             <Link
-              href="/"
+              href="/dashboard"
               className="flex items-center justify-between rounded-lg border border-border p-2.5 text-muted-foreground hover:text-foreground hover:bg-muted/40 transition-colors"
             >
               <span>Dashboard</span>
@@ -54,7 +54,7 @@ export default function DashboardNotFound() {
 
         {/* 👇 REPLACED: Styled Link instead of Button asChild */}
         <Link
-          href="/"
+          href="/dashboard"
           className={cn(buttonVariants({ variant: "default", size: "sm" }), "w-full justify-center")}
         >
           Return to Main Console

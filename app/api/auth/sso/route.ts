@@ -9,7 +9,7 @@ export async function GET(request: NextRequest) {
   const searchParams = request.nextUrl.searchParams;
   const payloadBase64 = searchParams.get("payload");
   const signature = searchParams.get("sig");
-  const returnTo = searchParams.get("returnTo") || "/";
+  const returnTo = searchParams.get("returnTo") || "/dashboard";
 
   if (!payloadBase64 || !signature) {
     return NextResponse.json(
@@ -42,7 +42,7 @@ export async function GET(request: NextRequest) {
   }
 
   // 3. Prepare redirect response to the target dashboard or requested deep-link
-  const sanitizedReturnTo = returnTo.startsWith("/") ? returnTo : "/";
+  const sanitizedReturnTo = returnTo.startsWith("/") && returnTo !== "/" ? returnTo : "/dashboard";
   const destinationUrl = new URL(sanitizedReturnTo, request.url);
   const response = NextResponse.redirect(destinationUrl);
 
