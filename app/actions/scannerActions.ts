@@ -61,6 +61,7 @@ export async function commitScannedSetupAction(
 
     if (res.success) {
       revalidatePath("/setups");
+      revalidatePath("/dashboard");
       revalidatePath("/");
     }
 
@@ -68,5 +69,34 @@ export async function commitScannedSetupAction(
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : "Failed to persist scanned setup";
     return { success: false, error: message };
+  }
+}
+
+/**
+ * Server Action: Triggers an immediate 24/7 autonomous cycle directly on the server.
+ */
+export async function triggerHeadlessCycleAction() {
+  try {
+    const { executeHeadlessAutomationCycle } = await import(
+      "@/lib/services/headlessAutomationEngine"
+    );
+    const result = await executeHeadlessAutomationCycle();
+    revalidatePath("/setups");
+    revalidatePath("/dashboard");
+    revalidatePath("/");
+    return result;
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : "Failed to execute headless cycle";
+    return {
+      success: false,
+      timestamp: new Date().toISOString(),
+      scannedSymbols: 0,
+      opportunitiesFound: 0,
+      setupsCreated: 0,
+      setupsUpdated: 0,
+      activeUsersCount: 0,
+      durationMs: 0,
+      error: message,
+    };
   }
 }

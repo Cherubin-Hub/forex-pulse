@@ -6,6 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
+import { triggerHeadlessCycleAction } from "@/app/actions/scannerActions";
 
 interface CycleResponse {
   success: boolean;
@@ -26,8 +27,7 @@ export function HeadlessAutomationCard() {
   const handleTriggerCycle = async () => {
     setIsRunning(true);
     try {
-      const res = await fetch("/api/cron/scan", { method: "POST" });
-      const data: CycleResponse = await res.json();
+      const data = await triggerHeadlessCycleAction();
       setLastResult(data);
 
       if (data.success) {
@@ -38,7 +38,7 @@ export function HeadlessAutomationCard() {
         toast.error("Headless Cycle Failed", { description: data.error });
       }
     } catch (err) {
-      toast.error("Network Error", {
+      toast.error("Execution Error", {
         description: err instanceof Error ? err.message : "Failed to trigger scan.",
       });
     } finally {
