@@ -277,8 +277,6 @@ export function AutoTradeAutomationProvider({
     try {
       const res = await runMarketScanAction({
         autoCommit: true,
-        minConfluenceScore: 75,
-        minRiskReward: 2.0,
         enableNewsFilter: true,
       });
 

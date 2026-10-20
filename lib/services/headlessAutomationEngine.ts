@@ -8,6 +8,7 @@ import { mapRowToSetup } from "@/lib/supabase/mappers";
 import type { TradingSetup } from "@/types/setup";
 import type { PriceQuote } from "@/types/market";
 import type { NotificationType, NotificationPriority } from "@/types/notification";
+import type { TraderProfile } from "@/lib/schemas/settings";
 
 export interface HeadlessCycleResult {
   success: boolean;
@@ -23,25 +24,26 @@ export interface HeadlessCycleResult {
 
 /**
  * 24/7 Autonomous Headless Market Intelligence & Execution Engine.
- * Runs completely independent of user browser sessions on the server.
+ * Evaluates market opportunities tailored to each registered user's trader profile
+ * (SCALPER, DAY_TRADER, SWING_TRADER) and auto-resolves open positions.
  */
 export async function executeHeadlessAutomationCycle(): Promise<HeadlessCycleResult> {
   const startTime = Date.now();
   const supabase = createAdminClient();
 
   try {
-    // 1. Fetch Registered Active Users
+    // 1. Fetch Registered Active Users with their profiles and risk constraints
     const { data: userSettings, error: userErr } = await supabase
       .from("user_settings")
-      .select("user_id");
+      .select("user_id, trader_profile, min_risk_reward, max_open_setups");
 
     if (userErr) {
       throw new Error(`Failed to query user accounts: ${userErr.message}`);
     }
 
-    const activeUserIds: string[] = (userSettings || [])
-      .map((u) => u.user_id)
-      .filter((id): id is string => Boolean(id));
+    const activeUsers = (userSettings || []).filter(
+      (u): u is typeof u & { user_id: string } => Boolean(u.user_id)
+    );
 
     // 2. Fetch Live Market Data in Parallel
     const [quotes, technicals, events] = await Promise.all([
@@ -114,70 +116,88 @@ export async function executeHeadlessAutomationCycle(): Promise<HeadlessCycleRes
       }
     }
 
-    // 4. JOB 2: Market Strategy Scanner & Autonomous Signal Commitment
+    // 4. JOB 2: Market Strategy Scanner Tailored by User Profile (SCALPER, DAY_TRADER, SWING_TRADER)
     let opportunitiesFound = 0;
     let setupsCreated = 0;
 
-    if (activeUserIds.length > 0) {
-      const scanResult = await scanMarketOpportunities({
-        minConfluenceScore: 75,
-        minRiskReward: 2.0,
-        enableNewsFilter: true,
-      });
+    // Cache scan results by profile to prevent re-scanning identical profiles
+    const profileScanCache = new Map<string, Awaited<ReturnType<typeof scanMarketOpportunities>>>();
 
-      opportunitiesFound = scanResult.opportunities.length;
+    for (const user of activeUsers) {
+      const profile: TraderProfile = (user.trader_profile as TraderProfile) || "DAY_TRADER";
+      const maxOpen = Number(user.max_open_setups) || 3;
 
-      if (opportunitiesFound > 0) {
-        for (const opp of scanResult.opportunities) {
-          for (const userId of activeUserIds) {
-            // Deduplication guard: Check if user already has an active setup for this pair
-            const { data: existing } = await supabase
-              .from("trading_setups")
-              .select("id")
-              .eq("user_id", userId)
-              .eq("symbol", opp.symbol)
-              .in("status", ["WAITING_FOR_CONFIRMATION", "ENTRY_TRIGGERED"])
-              .limit(1);
+      // Check current open setups count for this user
+      const { data: openSetups } = await supabase
+        .from("trading_setups")
+        .select("id, symbol")
+        .eq("user_id", user.user_id)
+        .in("status", ["WAITING_FOR_CONFIRMATION", "ENTRY_TRIGGERED"]);
 
-            if (!existing || existing.length === 0) {
-              const { error: insertErr } = await supabase
-                .from("trading_setups")
-                .insert({
-                  user_id: userId,
-                  symbol: opp.symbol,
-                  direction: opp.direction,
-                  entry_min: opp.entryMin,
-                  entry_max: opp.entryMax,
-                  stop_loss: opp.stopLoss,
-                  take_profit_1: opp.takeProfit1,
-                  take_profit_2: null,
-                  risk_reward: opp.riskReward,
-                  status: "WAITING_FOR_CONFIRMATION",
-                  invalidation_rule: opp.invalidationRule,
-                  notes: opp.notes,
-                  confluence_tags: opp.confluenceTags,
-                });
+      const currentOpenCount = openSetups?.length || 0;
+      if (currentOpenCount >= maxOpen) {
+        continue; // User reached maximum allowed concurrent setups
+      }
 
-              if (!insertErr) {
-                setupsCreated++;
+      const activeSymbolsForUser = new Set((openSetups || []).map((s) => s.symbol));
 
-                const notifType: NotificationType = "PRICE_SIGNAL";
-                const notifPriority: NotificationPriority = "HIGH";
+      // Retrieve or compute scan for this profile
+      const cacheKey = `${profile}_${user.min_risk_reward || "default"}`;
+      let scanResult = profileScanCache.get(cacheKey);
 
-                await supabase.from("notifications").insert({
-                  user_id: userId,
-                  type: notifType,
-                  priority: notifPriority,
-                  title: `⚡ 24/7 Scanner: Discovered ${opp.symbol} ${opp.direction}`,
-                  message: `High-confluence (${opp.confluenceScore}%) signal auto-committed while offline. R:R ${opp.riskReward}.`,
-                  symbol: opp.symbol,
-                  link_href: "/setups",
-                  action_label: "Review Setup",
-                  read: false,
-                });
-              }
-            }
-          }
+      if (!scanResult) {
+        scanResult = await scanMarketOpportunities({
+          traderProfile: profile,
+          minRiskReward: user.min_risk_reward ? Number(user.min_risk_reward) : undefined,
+          enableNewsFilter: true,
+        });
+        profileScanCache.set(cacheKey, scanResult);
+      }
+
+      opportunitiesFound = Math.max(opportunitiesFound, scanResult.opportunities.length);
+
+      // Commit qualifying setups up to user's max_open_setups limit
+      let remainingSlots = maxOpen - currentOpenCount;
+
+      for (const opp of scanResult.opportunities) {
+        if (remainingSlots <= 0) break;
+        if (activeSymbolsForUser.has(opp.symbol)) continue; // Already waiting or running
+
+        const { error: insertErr } = await supabase.from("trading_setups").insert({
+          user_id: user.user_id,
+          symbol: opp.symbol,
+          direction: opp.direction,
+          entry_min: opp.entryMin,
+          entry_max: opp.entryMax,
+          stop_loss: opp.stopLoss,
+          take_profit_1: opp.takeProfit1,
+          take_profit_2: null,
+          risk_reward: opp.riskReward,
+          status: "WAITING_FOR_CONFIRMATION",
+          invalidation_rule: opp.invalidationRule,
+          notes: opp.notes,
+          confluence_tags: opp.confluenceTags,
+        });
+
+        if (!insertErr) {
+          setupsCreated++;
+          remainingSlots--;
+          activeSymbolsForUser.add(opp.symbol);
+
+          const notifType: NotificationType = "PRICE_SIGNAL";
+          const notifPriority: NotificationPriority = "HIGH";
+
+          await supabase.from("notifications").insert({
+            user_id: user.user_id,
+            type: notifType,
+            priority: notifPriority,
+            title: `⚡ ${profile} Scanner: Discovered ${opp.symbol} ${opp.direction}`,
+            message: `High-confluence (${opp.confluenceScore}%) ${opp.strategy} signal auto-committed. R:R ${opp.riskReward}.`,
+            symbol: opp.symbol,
+            link_href: "/setups",
+            action_label: "Review Setup",
+            read: false,
+          });
         }
       }
     }
@@ -191,7 +211,7 @@ export async function executeHeadlessAutomationCycle(): Promise<HeadlessCycleRes
       opportunitiesFound,
       setupsCreated,
       setupsUpdated,
-      activeUsersCount: activeUserIds.length,
+      activeUsersCount: activeUsers.length,
       durationMs,
     };
   } catch (err: unknown) {

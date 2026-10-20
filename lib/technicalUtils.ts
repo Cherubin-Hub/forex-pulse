@@ -1,22 +1,42 @@
 import type { TechnicalAnalysis, ConfluenceScore, PivotLevels, TrendDirection } from "@/types/technical";
 import type { PriceQuote } from "@/types/market";
+import type { TraderProfile } from "@/lib/schemas/settings";
 import { INSTRUMENTS } from "@/lib/constants/instruments";
 
 /**
- * Computes a weighted multi-timeframe trend alignment score (D1: 35%, H4: 30%, H1: 20%, M15: 15%).
+ * Computes a weighted multi-timeframe trend alignment score tailored to the trader profile:
+ * - SCALPER: Prioritizes M15 (50%) & H1 (35%) with H4 context (15%). D1 ignored.
+ * - DAY_TRADER: Balanced intraday focus on H1 (40%), H4 (35%), M15 (15%), D1 (10%).
+ * - SWING_TRADER: Macro structure focus on D1 (45%), H4 (35%), H1 (15%), M15 (5%).
  */
-export function calculateConfluenceScore(tech: TechnicalAnalysis): ConfluenceScore {
-  const weights = {
-    D1: 0.35,
-    H4: 0.30,
-    H1: 0.20,
-    M15: 0.15,
-  };
+export function calculateConfluenceScore(
+  tech: TechnicalAnalysis,
+  profile: TraderProfile = "DAY_TRADER"
+): ConfluenceScore {
+  let weights: Record<"D1" | "H4" | "H1" | "M15", number>;
+  let minThreshold = 0.52;
+
+  switch (profile) {
+    case "SCALPER":
+      weights = { M15: 0.50, H1: 0.35, H4: 0.15, D1: 0.00 };
+      minThreshold = 0.48;
+      break;
+    case "SWING_TRADER":
+      weights = { D1: 0.45, H4: 0.35, H1: 0.15, M15: 0.05 };
+      minThreshold = 0.55;
+      break;
+    case "DAY_TRADER":
+    default:
+      weights = { H1: 0.40, H4: 0.35, M15: 0.15, D1: 0.10 };
+      minThreshold = 0.52;
+      break;
+  }
 
   let bullishWeight = 0;
   let bearishWeight = 0;
 
   for (const [tfKey, weight] of Object.entries(weights)) {
+    if (weight === 0) continue;
     const tf = tfKey as keyof typeof weights;
     const data = tech.timeframes[tf];
     if (!data) continue;
@@ -33,14 +53,26 @@ export function calculateConfluenceScore(tech: TechnicalAnalysis): ConfluenceSco
   let scorePercent = 50;
   let alignmentLabel = "Mixed / Consolidation";
 
-  if (bullishWeight > bearishWeight && bullishWeight >= 0.55) {
+  if (bullishWeight > bearishWeight && bullishWeight >= minThreshold) {
     dominantTrend = "BULLISH";
     scorePercent = Math.round(bullishWeight * 100);
-    alignmentLabel = scorePercent >= 80 ? "Strong Bullish Alignment" : "Bullish Trend (Pullback Active)";
-  } else if (bearishWeight > bullishWeight && bearishWeight >= 0.55) {
+    if (profile === "SCALPER") {
+      alignmentLabel = scorePercent >= 75 ? "Strong Scalp Momentum" : "M15 Scalp Pullback Setup";
+    } else if (profile === "SWING_TRADER") {
+      alignmentLabel = scorePercent >= 80 ? "Macro Swing Bullish Trend" : "Multi-Day Retracement Active";
+    } else {
+      alignmentLabel = scorePercent >= 80 ? "Strong Bullish Alignment" : "Bullish Trend (Pullback Active)";
+    }
+  } else if (bearishWeight > bullishWeight && bearishWeight >= minThreshold) {
     dominantTrend = "BEARISH";
     scorePercent = Math.round(bearishWeight * 100);
-    alignmentLabel = scorePercent >= 80 ? "Strong Bearish Alignment" : "Bearish Trend (Pullback Active)";
+    if (profile === "SCALPER") {
+      alignmentLabel = scorePercent >= 75 ? "Strong Bearish Scalp Momentum" : "M15 Scalp Pullback Setup";
+    } else if (profile === "SWING_TRADER") {
+      alignmentLabel = scorePercent >= 80 ? "Macro Swing Bearish Trend" : "Multi-Day Retracement Active";
+    } else {
+      alignmentLabel = scorePercent >= 80 ? "Strong Bearish Alignment" : "Bearish Trend (Pullback Active)";
+    }
   }
 
   return {

@@ -8,15 +8,17 @@ import { INSTRUMENTS } from "@/lib/constants/instruments";
 import type { PriceQuote } from "@/types/market";
 import type { TechnicalAnalysis } from "@/types/technical";
 import type { EconomicEvent } from "@/types/calendar";
-import type { ScannedOpportunity, ScannerFilterConfig, ScannerRunResult } from "@/types/scanner";
+import type { ScannedOpportunity, ScannerFilterConfig, ScannerRunResult, StrategyType } from "@/types/scanner";
+import type { TraderProfile } from "@/lib/schemas/settings";
 
 const DEFAULT_CONFIG: ScannerFilterConfig = {
-  minConfluenceScore: 75,
+  minConfluenceScore: 70,
   minRiskReward: 2.0,
   enableNewsFilter: true,
   autoCommit: true,
   mode: "AUTOMATIC",
   scanIntervalSeconds: 15,
+  traderProfile: "DAY_TRADER",
 };
 
 /**
@@ -40,7 +42,46 @@ function isNewsHazard(symbol: string, events: EconomicEvent[]): boolean {
 }
 
 /**
- * Algorithmic Engine: Evaluates a symbol for MTF Trend Pullback & Continuation.
+ * Resolves profile-specific baseline thresholds for confluence score and minimum R:R.
+ */
+function getProfileBaselines(profile: TraderProfile, userConfig: ScannerFilterConfig) {
+  let defaultScore: number;
+  let defaultRR: number;
+
+  switch (profile) {
+    case "SCALPER":
+      defaultScore = 60;
+      defaultRR = 1.5;
+      break;
+    case "SWING_TRADER":
+      defaultScore = 75;
+      defaultRR = 2.5;
+      break;
+    case "DAY_TRADER":
+    default:
+      defaultScore = 70;
+      defaultRR = 2.0;
+      break;
+  }
+
+  const effectiveMinScore =
+    userConfig.minConfluenceScore && userConfig.minConfluenceScore !== 75 && userConfig.minConfluenceScore !== 70
+      ? userConfig.minConfluenceScore
+      : defaultScore;
+
+  const effectiveMinRR =
+    userConfig.minRiskReward && userConfig.minRiskReward !== 2.0
+      ? userConfig.minRiskReward
+      : defaultRR;
+
+  return { effectiveMinScore, effectiveMinRR };
+}
+
+/**
+ * Algorithmic Engine: Evaluates a symbol tailored specifically to the trader's profile:
+ * - SCALPER: Fast M15 momentum & pullbacks with tight stops (10-20 pips), 1.5R+ targets.
+ * - DAY_TRADER: Intraday Pivot/S1/R1 bounces with 2.0R+ targets based on H1 ATR.
+ * - SWING_TRADER: Multi-day trend continuations with 2.5R+ targets based on H4/D1 structure.
  */
 function evaluateSymbol(
   quote: PriceQuote,
@@ -58,9 +99,12 @@ function evaluateSymbol(
     return null;
   }
 
-  // 2. Multi-Timeframe Trend & Confluence Alignment Score (D1: 35%, H4: 30%, H1: 20%, M15: 15%)
-  const confluence = calculateConfluenceScore(tech);
-  if (confluence.scorePercent < config.minConfluenceScore || confluence.dominantTrend === "NEUTRAL") {
+  const profile: TraderProfile = config.traderProfile || "DAY_TRADER";
+  const { effectiveMinScore, effectiveMinRR } = getProfileBaselines(profile, config);
+
+  // 2. Multi-Timeframe Confluence Alignment Score (Dynamic weights per profile)
+  const confluence = calculateConfluenceScore(tech, profile);
+  if (confluence.scorePercent < effectiveMinScore || confluence.dominantTrend === "NEUTRAL") {
     return null;
   }
 
@@ -71,65 +115,111 @@ function evaluateSymbol(
   const isJpy = symbol.includes("JPY");
   const pipMultiplier = isGold ? 0.1 : isJpy ? 0.01 : 0.0001;
 
-  // 3. Volatility Envelope and Pivot Geometry
-  const atrPips = tech.timeframes.H1.atr || 20;
-  const pivots = calculateDailyPivots(quote, atrPips);
-  const atrBuffer = atrPips * pipMultiplier;
-
+  let strategy: StrategyType;
   let entryMin: number;
   let entryMax: number;
   let stopLoss: number;
   let takeProfit1: number;
+  let invalidationRule: string;
+  let notes: string;
   const confluenceTags: string[] = [
     `Confluence ${confluence.scorePercent}%`,
     confluence.alignmentLabel,
   ];
 
-  if (isLong) {
-    // Pullback zone around Daily Pivot or Support 1
-    const anchor = price > pivots.pivot ? pivots.pivot : pivots.s1;
-    entryMin = Number((anchor - atrBuffer * 0.25).toFixed(decimals));
-    entryMax = Number((anchor + atrBuffer * 0.25).toFixed(decimals));
+  // 3. Profile-Specific Strategy & Geometry Generator
+  if (profile === "SCALPER") {
+    strategy = "M15_MOMENTUM_SCALP";
+    const scalpAtr = tech.timeframes.M15?.atr || Math.max(5, (tech.timeframes.H1.atr || 20) * 0.35);
+    const scalpBuffer = scalpAtr * pipMultiplier;
 
-    // Stop Loss safely below structural S2 or 1.2x ATR
-    stopLoss = Number((Math.min(pivots.s2, entryMin - atrBuffer * 1.2)).toFixed(decimals));
-    if (stopLoss >= entryMin) {
-      stopLoss = Number((entryMin - atrBuffer * 1.2).toFixed(decimals));
+    if (isLong) {
+      entryMin = Number((price - scalpBuffer * 0.25).toFixed(decimals));
+      entryMax = Number((price + scalpBuffer * 0.15).toFixed(decimals));
+      stopLoss = Number((entryMin - scalpBuffer * 0.9).toFixed(decimals));
+      takeProfit1 = Number((entryMax + scalpBuffer * 1.6).toFixed(decimals));
+      invalidationRule = `M5 candle close below Stop Loss @ ${stopLoss}`;
+      notes = `Scalp setup detected on M15 with ${confluence.scorePercent}% momentum confluence. Fast execution.`;
+      confluenceTags.push("M15 Scalp Momentum", "Fast Execution", "Target: +1.6R Scalp");
+    } else {
+      entryMin = Number((price - scalpBuffer * 0.15).toFixed(decimals));
+      entryMax = Number((price + scalpBuffer * 0.25).toFixed(decimals));
+      stopLoss = Number((entryMax + scalpBuffer * 0.9).toFixed(decimals));
+      takeProfit1 = Number((entryMin - scalpBuffer * 1.6).toFixed(decimals));
+      invalidationRule = `M5 candle close above Stop Loss @ ${stopLoss}`;
+      notes = `Scalp setup detected on M15 with ${confluence.scorePercent}% bearish momentum confluence. Fast execution.`;
+      confluenceTags.push("M15 Scalp Momentum", "Fast Execution", "Target: +1.6R Scalp");
     }
+  } else if (profile === "SWING_TRADER") {
+    strategy = "SWING_STRUCTURE_BREAK";
+    const atrPips = tech.timeframes.H4?.atr || tech.timeframes.D1.atr || 60;
+    const pivots = calculateDailyPivots(quote, atrPips);
+    const swingBuffer = atrPips * pipMultiplier;
 
-    // Take Profit targeting Resistance 2
-    takeProfit1 = Number((Math.max(pivots.r2, entryMax + atrBuffer * 2.5)).toFixed(decimals));
-    if (takeProfit1 <= entryMax) {
-      takeProfit1 = Number((entryMax + atrBuffer * 2.5).toFixed(decimals));
+    if (isLong) {
+      const anchor = price > pivots.pivot ? pivots.pivot : pivots.s1;
+      entryMin = Number((anchor - swingBuffer * 0.3).toFixed(decimals));
+      entryMax = Number((anchor + swingBuffer * 0.3).toFixed(decimals));
+      stopLoss = Number((Math.min(pivots.s2, entryMin - swingBuffer * 1.5)).toFixed(decimals));
+      if (stopLoss >= entryMin) {
+        stopLoss = Number((entryMin - swingBuffer * 1.5).toFixed(decimals));
+      }
+      takeProfit1 = Number((Math.max(pivots.r2, entryMax + swingBuffer * 3.2)).toFixed(decimals));
+      invalidationRule = `D1 candle close below Stop Loss @ ${stopLoss}`;
+      notes = `Macro swing trend on D1/H4 with ${confluence.scorePercent}% confluence. Multi-day targets.`;
+      confluenceTags.push("Swing Structure Break", `Target: R2 @ ${pivots.r2}`, "Multi-Day Extension");
+    } else {
+      const anchor = price < pivots.pivot ? pivots.pivot : pivots.r1;
+      entryMin = Number((anchor - swingBuffer * 0.3).toFixed(decimals));
+      entryMax = Number((anchor + swingBuffer * 0.3).toFixed(decimals));
+      stopLoss = Number((Math.max(pivots.r2, entryMax + swingBuffer * 1.5)).toFixed(decimals));
+      if (stopLoss <= entryMax) {
+        stopLoss = Number((entryMax + swingBuffer * 1.5).toFixed(decimals));
+      }
+      takeProfit1 = Number((Math.min(pivots.s2, entryMin - swingBuffer * 3.2)).toFixed(decimals));
+      invalidationRule = `D1 candle close above Stop Loss @ ${stopLoss}`;
+      notes = `Macro swing breakdown on D1/H4 with ${confluence.scorePercent}% confluence. Multi-day targets.`;
+      confluenceTags.push("Swing Structure Breakdown", `Target: S2 @ ${pivots.s2}`, "Multi-Day Extension");
     }
-
-    confluenceTags.push("Support Pullback Bounce", `Target: R2 @ ${pivots.r2}`);
   } else {
-    // Rally rejection zone around Daily Pivot or Resistance 1
-    const anchor = price < pivots.pivot ? pivots.pivot : pivots.r1;
-    entryMin = Number((anchor - atrBuffer * 0.25).toFixed(decimals));
-    entryMax = Number((anchor + atrBuffer * 0.25).toFixed(decimals));
+    // DAY_TRADER default
+    strategy = "INTRADAY_DAY_TRADE";
+    const atrPips = tech.timeframes.H1.atr || 20;
+    const pivots = calculateDailyPivots(quote, atrPips);
+    const atrBuffer = atrPips * pipMultiplier;
 
-    // Stop Loss safely above structural R2 or 1.2x ATR
-    stopLoss = Number((Math.max(pivots.r2, entryMax + atrBuffer * 1.2)).toFixed(decimals));
-    if (stopLoss <= entryMax) {
-      stopLoss = Number((entryMax + atrBuffer * 1.2).toFixed(decimals));
+    if (isLong) {
+      const anchor = price > pivots.pivot ? pivots.pivot : pivots.s1;
+      entryMin = Number((anchor - atrBuffer * 0.25).toFixed(decimals));
+      entryMax = Number((anchor + atrBuffer * 0.25).toFixed(decimals));
+      stopLoss = Number((Math.min(pivots.s2, entryMin - atrBuffer * 1.2)).toFixed(decimals));
+      if (stopLoss >= entryMin) {
+        stopLoss = Number((entryMin - atrBuffer * 1.2).toFixed(decimals));
+      }
+      takeProfit1 = Number((Math.max(pivots.r2, entryMax + atrBuffer * 2.5)).toFixed(decimals));
+      invalidationRule = `H1 candle close below Stop Loss @ ${stopLoss}`;
+      notes = `Intraday Day Trade detected with ${confluence.scorePercent}% H1/H4 confluence. News risk clear.`;
+      confluenceTags.push("Support Pullback Bounce", `Target: R2 @ ${pivots.r2}`);
+    } else {
+      const anchor = price < pivots.pivot ? pivots.pivot : pivots.r1;
+      entryMin = Number((anchor - atrBuffer * 0.25).toFixed(decimals));
+      entryMax = Number((anchor + atrBuffer * 0.25).toFixed(decimals));
+      stopLoss = Number((Math.max(pivots.r2, entryMax + atrBuffer * 1.2)).toFixed(decimals));
+      if (stopLoss <= entryMax) {
+        stopLoss = Number((entryMax + atrBuffer * 1.2).toFixed(decimals));
+      }
+      takeProfit1 = Number((Math.min(pivots.s2, entryMin - atrBuffer * 2.5)).toFixed(decimals));
+      invalidationRule = `H1 candle close above Stop Loss @ ${stopLoss}`;
+      notes = `Intraday Day Trade rejection detected with ${confluence.scorePercent}% H1/H4 confluence. News risk clear.`;
+      confluenceTags.push("Resistance Pullback Rejection", `Target: S2 @ ${pivots.s2}`);
     }
-
-    // Take Profit targeting Support 2
-    takeProfit1 = Number((Math.min(pivots.s2, entryMin - atrBuffer * 2.5)).toFixed(decimals));
-    if (takeProfit1 >= entryMin) {
-      takeProfit1 = Number((entryMin - atrBuffer * 2.5).toFixed(decimals));
-    }
-
-    confluenceTags.push("Resistance Pullback Rejection", `Target: S2 @ ${pivots.s2}`);
   }
 
-  // 4. Strict Risk:Reward Ratio Verification
+  // 4. Risk:Reward Ratio Verification
   const avgEntry = (entryMin + entryMax) / 2;
   const calculatedRR = calculateRiskReward(isLong ? "LONG" : "SHORT", avgEntry, stopLoss, takeProfit1);
 
-  if (calculatedRR < config.minRiskReward) {
+  if (calculatedRR < effectiveMinRR) {
     return null;
   }
 
@@ -137,7 +227,7 @@ function evaluateSymbol(
     id: `scan-${symbol}-${Date.now()}`,
     symbol,
     direction: isLong ? "LONG" : "SHORT",
-    strategy: "MTF_TREND_PULLBACK",
+    strategy,
     entryMin,
     entryMax,
     stopLoss,
@@ -146,17 +236,15 @@ function evaluateSymbol(
     riskReward: Number(calculatedRR.toFixed(2)),
     confluenceScore: confluence.scorePercent,
     confluenceTags,
-    invalidationRule: isLong
-      ? `H1 candle close below Stop Loss @ ${stopLoss}`
-      : `H1 candle close above Stop Loss @ ${stopLoss}`,
-    notes: `Automated scanner detected ${confluence.dominantTrend} setup with ${confluence.scorePercent}% MTF confluence. News risk clear.`,
+    invalidationRule,
+    notes,
     detectedAt: new Date().toISOString(),
     newsClear: !hasNewsHazard,
   };
 }
 
 /**
- * Controller Service: Orchestrates market-wide scan across all watchlist assets.
+ * Controller Service: Orchestrates market-wide scan across all watchlist assets tailored to the trader profile.
  */
 export async function scanMarketOpportunities(
   userConfig?: Partial<ScannerFilterConfig>
