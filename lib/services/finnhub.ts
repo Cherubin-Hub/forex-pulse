@@ -21,7 +21,11 @@ export const SYMBOL_MAP_TO_FINNHUB: Record<string, string> = {
   XAUUSD: "OANDA:XAU_USD",
 };
 export function getFinnhubApiKey(): string | null {
-  return process.env.FINNHUB_API_KEY?.trim() || null;
+  return (
+    process.env.FINNHUB_API_KEY?.trim() ||
+    process.env.NEXT_PUBLIC_FINNHUB_API_KEY?.trim() ||
+    null
+  );
 }
 export async function fetchFinnhubCandles(
   symbol: string,

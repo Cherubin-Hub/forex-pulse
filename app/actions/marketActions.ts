@@ -5,27 +5,44 @@ import {
   getFinnhubApiKey,
   verifyFinnhubConnection,
 } from "@/lib/services/finnhub";
+import { verifyYahooConnection } from "@/lib/services/yahooFinance";
 import type { PriceQuote } from "@/types/market";
+
 export async function getMarketSnapshotAction(): Promise<PriceQuote[]> {
   await requireUserId();
   return getQuotes();
 }
+
 export async function getFeedConfigurationAction(): Promise<{
   configured: boolean;
+  provider: "YAHOO" | "FINNHUB" | "NONE";
 }> {
   await requireUserId();
-  return { configured: Boolean(getFinnhubApiKey()) };
+  const yahooActive = await verifyYahooConnection();
+  if (yahooActive) {
+    return { configured: true, provider: "YAHOO" };
+  }
+  const hasFinnhub = Boolean(getFinnhubApiKey());
+  return {
+    configured: hasFinnhub,
+    provider: hasFinnhub ? "FINNHUB" : "NONE",
+  };
 }
+
 export async function testMarketFeedAction(): Promise<{
   success: boolean;
   error?: string;
 }> {
   await requireUserId();
-  const success = await verifyFinnhubConnection();
+  const yahooSuccess = await verifyYahooConnection();
+  if (yahooSuccess) {
+    return { success: true };
+  }
+  const finnhubSuccess = await verifyFinnhubConnection();
   return {
-    success,
-    error: success
+    success: finnhubSuccess,
+    error: finnhubSuccess
       ? undefined
-      : "Forex candles were not returned. Check FINNHUB_API_KEY and your provider subscription.",
+      : "Market candles could not be fetched. Check your internet connection.",
   };
 }
