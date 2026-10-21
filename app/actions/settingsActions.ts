@@ -1,93 +1,58 @@
 "use server";
-
 import { createAdminClient } from "@/lib/supabase/admin";
-import { getAuthenticatedUserId } from "@/lib/auth/user";
-import type { UserSettings } from "@/lib/schemas/settings";
+import { requireUserId } from "@/lib/auth/user";
+import { settingsSchema, type UserSettings } from "@/lib/schemas/settings";
+import { getUserSettings } from "@/lib/services/userSettings";
 
-export interface SettingsActionResult {
+export async function fetchCloudSettings(): Promise<{
   success: boolean;
-  data?: Partial<UserSettings>;
+  data?: UserSettings;
   error?: string;
-}
-
-/**
- * Server Action to fetch user settings from Supabase specific to the logged-in user.
- */
-export async function fetchCloudSettings(): Promise<SettingsActionResult> {
+}> {
   try {
-    const userId = await getAuthenticatedUserId();
-    if (!userId) return { success: false, error: "Unauthorized" };
-
-    const supabase = createAdminClient();
-
-    // Fetch settings specific to this user's UUID
-    const { data, error } = await supabase
-      .from("user_settings")
-      .select("*")
-      .eq("user_id", userId)
-      .limit(1)
-      .maybeSingle();
-
-    if (error) return { success: false, error: error.message };
-    if (!data) return { success: true, data: undefined };
-
-    const cloudSettings: Partial<UserSettings> = {
-      traderProfile: data.trader_profile as UserSettings["traderProfile"],
-      riskPerTradePercent: Number(data.risk_per_trade_percent),
-      minRiskReward: Number(data.min_risk_reward),
-      maxOpenSetups: Number(data.max_open_setups),
-      sessionFocus: data.session_focus as UserSettings["sessionFocus"],
-      newsSensitivity: data.news_sensitivity as UserSettings["newsSensitivity"],
+    return {
+      success: true,
+      data: await getUserSettings(await requireUserId()),
     };
-
-    return { success: true, data: cloudSettings };
-  } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : "Failed to fetch cloud settings";
-    return { success: false, error: message };
+  } catch (error: unknown) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Settings unavailable",
+    };
   }
 }
 
-/**
- * Server Action to save or update settings in Supabase specific to the logged-in user.
- */
-export async function saveCloudSettings(settings: UserSettings): Promise<SettingsActionResult> {
+export async function saveCloudSettings(
+  input: UserSettings,
+): Promise<{ success: boolean; error?: string }> {
   try {
-    const userId = await getAuthenticatedUserId();
-    if (!userId) return { success: false, error: "Unauthorized" };
-
-    const supabase = createAdminClient();
-
-    const { data: existing } = await supabase
-      .from("user_settings")
-      .select("id")
-      .eq("user_id", userId)
-      .limit(1)
-      .maybeSingle();
-
-    const payload = {
-      user_id: userId,
-      trader_profile: settings.traderProfile,
-      risk_per_trade_percent: settings.riskPerTradePercent,
-      min_risk_reward: settings.minRiskReward,
-      max_open_setups: settings.maxOpenSetups,
-      session_focus: settings.sessionFocus,
-      news_sensitivity: settings.newsSensitivity,
-      updated_at: new Date().toISOString(),
-    };
-
-    let error;
-    if (existing?.id) {
-      const res = await supabase.from("user_settings").update(payload).eq("id", existing.id);
-      error = res.error;
-    } else {
-      const res = await supabase.from("user_settings").insert(payload);
-      error = res.error;
-    }
-
-    if (error) return { success: false, error: error.message };
+    const userId = await requireUserId();
+    const settings = settingsSchema.parse(input);
+    const { error } = await createAdminClient().from("user_settings").upsert(
+      {
+        user_id: userId,
+        trader_profile: settings.traderProfile,
+        risk_per_trade_percent: settings.riskPerTradePercent,
+        min_risk_reward: settings.minRiskReward,
+        max_open_setups: settings.maxOpenSetups,
+        session_focus: settings.sessionFocus,
+        news_sensitivity: settings.newsSensitivity,
+        account_balance: settings.accountBalance,
+        leverage: settings.leverage,
+        max_daily_loss_r: settings.maxDailyLossR,
+        automation_enabled: settings.automationEnabled,
+        manual_lockout_until: settings.manualLockoutUntil,
+        updated_at: new Date().toISOString(),
+      },
+      { onConflict: "user_id" },
+    );
+    if (error) throw new Error(error.message);
     return { success: true };
-  } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : "Failed to save cloud settings";
-    return { success: false, error: message };
+  } catch (error: unknown) {
+    return {
+      success: false,
+      error:
+        error instanceof Error ? error.message : "Settings could not be saved",
+    };
   }
 }

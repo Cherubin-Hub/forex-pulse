@@ -45,7 +45,7 @@ export type PendingTradeProximity = {
  */
 export function calculateActiveTradeMetrics(
   setup: TradingSetup,
-  quote: PriceQuote
+  quote: PriceQuote,
 ): ActiveTradeMetrics | null {
   if (quote.price === null) return null;
 
@@ -57,13 +57,22 @@ export function calculateActiveTradeMetrics(
   const entryMid = (setup.entryMin + setup.entryMax) / 2;
   const isLong = setup.direction === "LONG";
 
-  const totalTargetPips = Number((Math.abs(setup.takeProfit1 - entryMid) * multiplier).toFixed(1));
-  const totalStopPips = Number((Math.abs(entryMid - setup.stopLoss) * multiplier).toFixed(1));
+  const totalTargetPips = Number(
+    (Math.abs(setup.takeProfit1 - entryMid) * multiplier).toFixed(1),
+  );
+  const totalStopPips = Number(
+    (
+      Math.abs(entryMid - (setup.originalStopLoss ?? setup.stopLoss)) *
+      multiplier
+    ).toFixed(1),
+  );
   const safeStopPips = totalStopPips > 0 ? totalStopPips : 1;
 
   // Floating PnL in pips from entry midpoint
   const pnlPips = Number(
-    ((isLong ? currentPrice - entryMid : entryMid - currentPrice) * multiplier).toFixed(1)
+    (
+      (isLong ? currentPrice - entryMid : entryMid - currentPrice) * multiplier
+    ).toFixed(1),
   );
 
   // Floating R-Multiple
@@ -71,18 +80,31 @@ export function calculateActiveTradeMetrics(
 
   // Pips to Target 1 and Stop Loss
   const pipsToTarget = Number(
-    ((isLong ? setup.takeProfit1 - currentPrice : currentPrice - setup.takeProfit1) * multiplier).toFixed(1)
+    (
+      (isLong
+        ? setup.takeProfit1 - currentPrice
+        : currentPrice - setup.takeProfit1) * multiplier
+    ).toFixed(1),
   );
   const pipsToStop = Number(
-    ((isLong ? currentPrice - setup.stopLoss : setup.stopLoss - currentPrice) * multiplier).toFixed(1)
+    (
+      (isLong ? currentPrice - setup.stopLoss : setup.stopLoss - currentPrice) *
+      multiplier
+    ).toFixed(1),
   );
 
   // Normalized progress percentage: 0% at entry, 100% at TP1, -100% at SL
   let progressPercent = 0;
   if (pnlPips >= 0) {
-    progressPercent = Math.min(100, Math.round((pnlPips / (totalTargetPips || 1)) * 100));
+    progressPercent = Math.min(
+      100,
+      Math.round((pnlPips / (totalTargetPips || 1)) * 100),
+    );
   } else {
-    progressPercent = Math.max(-100, Math.round((pnlPips / safeStopPips) * 100));
+    progressPercent = Math.max(
+      -100,
+      Math.round((pnlPips / safeStopPips) * 100),
+    );
   }
 
   // Determine Capital Protection Advisory
@@ -138,7 +160,7 @@ export function calculateActiveTradeMetrics(
  */
 export function calculatePendingTradeProximity(
   setup: TradingSetup,
-  quote: PriceQuote
+  quote: PriceQuote,
 ): PendingTradeProximity | null {
   if (quote.price === null) return null;
 

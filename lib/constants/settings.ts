@@ -1,9 +1,18 @@
-import type { NewsSensitivity, TraderProfile, UserSettings } from "@/lib/schemas/settings";
+import type {
+  NewsSensitivity,
+  TraderProfile,
+  UserSettings,
+} from "@/lib/schemas/settings";
 
 export const SETTINGS_STORAGE_KEY = "forex-pulse:settings:v1";
 
 export const DEFAULT_SETTINGS: UserSettings = {
   traderProfile: "DAY_TRADER",
+  accountBalance: 10000,
+  leverage: 100,
+  maxDailyLossR: 2,
+  automationEnabled: false,
+  manualLockoutUntil: null,
   riskPerTradePercent: 1,
   minRiskReward: 2,
   maxOpenSetups: 3,
@@ -17,7 +26,8 @@ export const TRADER_PROFILE_OPTIONS: Record<
 > = {
   SCALPER: {
     label: "Scalper",
-    description: "Quick trades lasting minutes. Needs tight spreads and precise timing.",
+    description:
+      "Quick trades lasting minutes. Needs tight spreads and precise timing.",
     timeframes: ["M1", "M5", "M15"],
   },
   DAY_TRADER: {
@@ -27,14 +37,20 @@ export const TRADER_PROFILE_OPTIONS: Record<
   },
   SWING_TRADER: {
     label: "Swing Trader",
-    description: "Holds positions for days, following the higher-timeframe trend.",
+    description:
+      "Holds positions for days, following the higher-timeframe trend.",
     timeframes: ["H4", "D1"],
   },
 };
 
 export const NEWS_SENSITIVITY_OPTIONS: Record<
   NewsSensitivity,
-  { label: string; description: string; preReleaseMinutes: number; postReleaseMinutes: number }
+  {
+    label: string;
+    description: string;
+    preReleaseMinutes: number;
+    postReleaseMinutes: number;
+  }
 > = {
   AGGRESSIVE: {
     label: "Aggressive",

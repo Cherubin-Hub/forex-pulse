@@ -1,4 +1,5 @@
 "use client";
+import { useSettings } from "@/hooks/useSettings";
 
 import { useState, useEffect, useMemo } from "react";
 import { Award, Brain, AlertOctagon } from "lucide-react";
@@ -25,15 +26,18 @@ export function DisciplineEdgeMatrix({
   onSelectGrade,
   reviews: propReviews,
 }: DisciplineEdgeMatrixProps) {
-  const [mountedReviews, setMountedReviews] = useState<Record<string, TradePostMortem>>({});
+  const { identity } = useSettings();
+  const [mountedReviews, setMountedReviews] = useState<
+    Record<string, TradePostMortem>
+  >({});
 
   // Hydration-safe post-mortem loader
   useEffect(() => {
     if (!propReviews) {
       // eslint-disable-next-line react-hooks/set-state-in-effect -- Hydration match pattern
-      setMountedReviews(loadAllPostMortems());
+      setMountedReviews(loadAllPostMortems(identity?.userId));
     }
-  }, [propReviews]);
+  }, [propReviews, identity?.userId]);
 
   const activeReviews = propReviews ?? mountedReviews;
 
@@ -45,8 +49,13 @@ export function DisciplineEdgeMatrix({
     return (
       <div className="rounded-xl border border-dashed border-border bg-card/50 p-6 text-center text-xs text-muted-foreground space-y-1.5">
         <Award className="h-6 w-6 mx-auto opacity-30 text-primary" />
-        <p className="font-semibold text-foreground">Discipline Edge Analytics</p>
-        <p>Log post-mortem reviews on your resolved trades below to unlock execution quality metrics.</p>
+        <p className="font-semibold text-foreground">
+          Discipline Edge Analytics
+        </p>
+        <p>
+          Log post-mortem reviews on your resolved trades below to unlock
+          execution quality metrics.
+        </p>
       </div>
     );
   }
@@ -61,7 +70,8 @@ export function DisciplineEdgeMatrix({
             Process Adherence & Discipline Edge Matrix
           </h3>
           <p className="text-xs text-muted-foreground mt-0.5">
-            Empirical performance correlation: Process Grade vs Financial Return across {edge.totalReviewed} reviewed setups.
+            Empirical performance correlation: Process Grade vs Financial Return
+            across {edge.totalReviewed} reviewed setups.
           </p>
         </div>
 
@@ -87,32 +97,44 @@ export function DisciplineEdgeMatrix({
                 "flex flex-col justify-between p-3 rounded-lg border text-left transition-all",
                 isSelected
                   ? "border-primary bg-primary/10 shadow-sm ring-1 ring-primary"
-                  : "border-border/70 bg-muted/20 hover:bg-muted/40"
+                  : "border-border/70 bg-muted/20 hover:bg-muted/40",
               )}
             >
               <div className="flex items-center justify-between">
                 <span
                   className={cn(
                     "rounded border px-1.5 py-0.5 text-[10px] font-mono font-bold",
-                    getGradeBadgeColor(g.grade)
+                    getGradeBadgeColor(g.grade),
                   )}
                 >
                   Grade {g.grade}
                 </span>
-                <span className="text-[10px] text-muted-foreground font-mono">{g.count} trades</span>
+                <span className="text-[10px] text-muted-foreground font-mono">
+                  {g.count} trades
+                </span>
               </div>
 
               <div className="mt-2 space-y-0.5">
                 <div className="flex items-baseline justify-between">
-                  <span className="text-[11px] text-muted-foreground">Win Rate:</span>
-                  <span className="font-mono text-xs font-bold text-foreground">{g.winRate}%</span>
+                  <span className="text-[11px] text-muted-foreground">
+                    Win Rate:
+                  </span>
+                  <span className="font-mono text-xs font-bold text-foreground">
+                    {g.winRate}%
+                  </span>
                 </div>
                 <div className="flex items-baseline justify-between">
-                  <span className="text-[11px] text-muted-foreground">Net R:</span>
+                  <span className="text-[11px] text-muted-foreground">
+                    Net R:
+                  </span>
                   <span
                     className={cn(
                       "font-mono text-xs font-bold",
-                      g.totalR > 0 ? "text-emerald-500" : g.totalR < 0 ? "text-rose-500" : "text-muted-foreground"
+                      g.totalR > 0
+                        ? "text-emerald-500"
+                        : g.totalR < 0
+                          ? "text-rose-500"
+                          : "text-muted-foreground",
                     )}
                   >
                     {g.totalR > 0 ? `+${g.totalR}R` : `${g.totalR}R`}
@@ -134,7 +156,10 @@ export function DisciplineEdgeMatrix({
           </div>
           <div className="space-y-1.5">
             {edge.psychologyMetrics.map((p) => (
-              <div key={p.state} className="flex items-center justify-between text-[11px]">
+              <div
+                key={p.state}
+                className="flex items-center justify-between text-[11px]"
+              >
                 <span className="text-muted-foreground capitalize font-medium">
                   {p.state.toLowerCase()} ({p.count})
                 </span>
@@ -143,7 +168,11 @@ export function DisciplineEdgeMatrix({
                   <span
                     className={cn(
                       "font-bold",
-                      p.totalR > 0 ? "text-emerald-500" : p.totalR < 0 ? "text-rose-500" : "text-muted-foreground"
+                      p.totalR > 0
+                        ? "text-emerald-500"
+                        : p.totalR < 0
+                          ? "text-rose-500"
+                          : "text-muted-foreground",
                     )}
                   >
                     {p.totalR > 0 ? `+${p.totalR}R` : `${p.totalR}R`}
@@ -167,8 +196,14 @@ export function DisciplineEdgeMatrix({
           ) : (
             <div className="space-y-1.5">
               {edge.mistakeLeakages.map((m) => (
-                <div key={m.mistake} className="flex items-center justify-between text-[11px]">
-                  <span className="text-muted-foreground truncate max-w-[200px]" title={m.label}>
+                <div
+                  key={m.mistake}
+                  className="flex items-center justify-between text-[11px]"
+                >
+                  <span
+                    className="text-muted-foreground truncate max-w-[200px]"
+                    title={m.label}
+                  >
                     {m.label} ({m.count})
                   </span>
                   <span className="font-mono font-bold text-rose-500">

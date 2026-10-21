@@ -1,107 +1,85 @@
 "use server";
-
 import { revalidatePath } from "next/cache";
+import { requireUserId } from "@/lib/auth/user";
 import { scanMarketOpportunities } from "@/lib/services/strategyScanner";
-import { createTradingSetup, type UpdateStatusResult } from "@/app/actions/setupActions";
-import type { ScannedOpportunity, ScannerFilterConfig, ScannerRunResult } from "@/types/scanner";
-import type { CreateSetupFormData } from "@/lib/schemas/setup";
-
-export interface ScanActionResult {
-  success: boolean;
-  result?: ScannerRunResult;
-  error?: string;
-}
-
-/**
- * Server Action: Scans the market on the server tailored to the user's active trader profile.
- * Automatically loads user settings (SCALPER, DAY_TRADER, SWING_TRADER) if not explicitly provided.
- */
+import { getUserSettings } from "@/lib/services/userSettings";
+import { createSetupForUser } from "@/lib/services/trading";
+import { getNewsWindows } from "@/lib/settings";
+import { createAdminClient } from "@/lib/supabase/admin";
+import {
+  scannerConfigSchema,
+  scannedOpportunitySchema,
+} from "@/lib/schemas/scanner";
+import { executeHeadlessAutomationCycle } from "@/lib/services/headlessAutomationEngine";
+import type {
+  ScannedOpportunity,
+  ScannerFilterConfig,
+  ScannerRunResult,
+} from "@/types/scanner";
+import type { UpdateStatusResult, HeadlessCycleResult } from "@/types/action";
 export async function runMarketScanAction(
-  config?: Partial<ScannerFilterConfig>
-): Promise<ScanActionResult> {
+  input?: Partial<ScannerFilterConfig>,
+): Promise<{ success: boolean; result?: ScannerRunResult; error?: string }> {
   try {
-    const effectiveConfig: Partial<ScannerFilterConfig> = { ...config };
-
-    // Dynamically resolve trader profile from the user's cloud settings if not provided
-    if (!effectiveConfig.traderProfile) {
-      const { fetchCloudSettings } = await import("@/app/actions/settingsActions");
-      const settingsRes = await fetchCloudSettings();
-      if (settingsRes.success && settingsRes.data?.traderProfile) {
-        effectiveConfig.traderProfile = settingsRes.data.traderProfile;
-        if (settingsRes.data.minRiskReward && !effectiveConfig.minRiskReward) {
-          effectiveConfig.minRiskReward = settingsRes.data.minRiskReward;
-        }
-      }
-    }
-
-    const scanResult = await scanMarketOpportunities(effectiveConfig);
-
-    // Auto-commit mode: Immediately write setups to Supabase if enabled
-    if (effectiveConfig.autoCommit && scanResult.opportunities.length > 0) {
-      let committed = 0;
-      for (const opp of scanResult.opportunities) {
-        const commitRes = await commitScannedSetupAction(opp);
-        if (commitRes.success) committed++;
-      }
-      scanResult.committedCount = committed;
-    }
-
-    return { success: true, result: scanResult };
-  } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : "Market scan execution failed";
-    return { success: false, error: message };
+    const userId = await requireUserId(),
+      settings = await getUserSettings(userId),
+      config = scannerConfigSchema.parse(input ?? {});
+    const { data, error } = await createAdminClient()
+      .from("trading_setups")
+      .select("symbol")
+      .eq("user_id", userId)
+      .in("status", ["WAITING_FOR_CONFIRMATION", "ENTRY_TRIGGERED"]);
+    if (error) throw new Error("Portfolio unavailable.");
+    const result = await scanMarketOpportunities(
+      {
+        ...config,
+        traderProfile: settings.traderProfile,
+        minRiskReward: Math.max(
+          config.minRiskReward ?? settings.minRiskReward,
+          settings.minRiskReward,
+        ),
+        autoCommit: false,
+        newsWindows: getNewsWindows(settings),
+        enableNewsFilter: true,
+      },
+      (data ?? []).map((row) => row.symbol),
+    );
+    // Scanning never writes. Automatic commits run through the account's saved opt-in.
+    return { success: true, result };
+  } catch (error: unknown) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Scan failed",
+    };
   }
 }
-
-/**
- * Server Action: Approves and persists a single discovered opportunity into Supabase.
- */
 export async function commitScannedSetupAction(
-  opportunity: ScannedOpportunity
+  input: ScannedOpportunity,
 ): Promise<UpdateStatusResult> {
   try {
-    const formData: CreateSetupFormData = {
-      symbol: opportunity.symbol,
-      direction: opportunity.direction,
-      entryMin: opportunity.entryMin,
-      entryMax: opportunity.entryMax,
-      stopLoss: opportunity.stopLoss,
-      takeProfit1: opportunity.takeProfit1,
-      invalidationRule: opportunity.invalidationRule,
-      notes: opportunity.notes,
+    const userId = await requireUserId(),
+      opportunity = scannedOpportunitySchema.parse(input);
+    if (Date.now() - Date.parse(opportunity.detectedAt) > 120000)
+      throw new Error("Opportunity is stale. Run a new scan.");
+    await createSetupForUser(userId, {
+      ...opportunity,
       confluenceTags: opportunity.confluenceTags.join(", "),
+    });
+    revalidatePath("/", "layout");
+    return { success: true };
+  } catch (error: unknown) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Commit failed",
     };
-
-    const res = await createTradingSetup(formData);
-
-    if (res.success) {
-      revalidatePath("/setups");
-      revalidatePath("/dashboard");
-      revalidatePath("/");
-    }
-
-    return res;
-  } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : "Failed to persist scanned setup";
-    return { success: false, error: message };
   }
 }
-
-/**
- * Server Action: Triggers an immediate 24/7 autonomous cycle directly on the server.
- */
-export async function triggerHeadlessCycleAction() {
+export async function triggerHeadlessCycleAction(): Promise<HeadlessCycleResult> {
   try {
-    const { executeHeadlessAutomationCycle } = await import(
-      "@/lib/services/headlessAutomationEngine"
-    );
-    const result = await executeHeadlessAutomationCycle();
-    revalidatePath("/setups");
-    revalidatePath("/dashboard");
-    revalidatePath("/");
+    const result = await executeHeadlessAutomationCycle(await requireUserId());
+    revalidatePath("/", "layout");
     return result;
-  } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : "Failed to execute headless cycle";
+  } catch (error: unknown) {
     return {
       success: false,
       timestamp: new Date().toISOString(),
@@ -111,7 +89,7 @@ export async function triggerHeadlessCycleAction() {
       setupsUpdated: 0,
       activeUsersCount: 0,
       durationMs: 0,
-      error: message,
+      error: error instanceof Error ? error.message : "Unauthorized",
     };
   }
 }

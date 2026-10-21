@@ -1,3 +1,4 @@
+import { calculateRealizedR } from "@/lib/postMortemUtils";
 import type { TradingSetup, SetupStatus } from "@/types/setup";
 
 export interface SetupAutoResolutionResult {
@@ -28,9 +29,14 @@ export interface SetupAutoResolutionResult {
  */
 export function evaluateSetupAutoResolution(
   setup: TradingSetup,
-  currentPrice: number | null
+  currentPrice: number | null,
 ): SetupAutoResolutionResult | null {
-  if (currentPrice === null || currentPrice <= 0) return null;
+  if (
+    currentPrice === null ||
+    !Number.isFinite(currentPrice) ||
+    currentPrice <= 0
+  )
+    return null;
 
   const isLong = setup.direction === "LONG";
 
@@ -101,7 +107,7 @@ export function evaluateSetupAutoResolution(
           previousStatus: setup.status,
           nextStatus: "TP_REACHED",
           triggerPrice: currentPrice,
-          pnlR: Number(setup.riskReward.toFixed(1)),
+          pnlR: calculateRealizedR({ ...setup, status: "TP_REACHED" }),
           reason: `Take Profit 1 hit at ${currentPrice} (Target: ${setup.takeProfit1}).`,
         };
       }
@@ -114,7 +120,7 @@ export function evaluateSetupAutoResolution(
           previousStatus: setup.status,
           nextStatus: "SL_HIT",
           triggerPrice: currentPrice,
-          pnlR: -1.0,
+          pnlR: calculateRealizedR({ ...setup, status: "SL_HIT" }),
           reason: `Stop Loss hit at ${currentPrice} (Stop: ${setup.stopLoss}).`,
         };
       }
@@ -128,7 +134,7 @@ export function evaluateSetupAutoResolution(
           previousStatus: setup.status,
           nextStatus: "TP_REACHED",
           triggerPrice: currentPrice,
-          pnlR: Number(setup.riskReward.toFixed(1)),
+          pnlR: calculateRealizedR({ ...setup, status: "TP_REACHED" }),
           reason: `Take Profit 1 hit at ${currentPrice} (Target: ${setup.takeProfit1}).`,
         };
       }
@@ -141,7 +147,7 @@ export function evaluateSetupAutoResolution(
           previousStatus: setup.status,
           nextStatus: "SL_HIT",
           triggerPrice: currentPrice,
-          pnlR: -1.0,
+          pnlR: calculateRealizedR({ ...setup, status: "SL_HIT" }),
           reason: `Stop Loss hit at ${currentPrice} (Stop: ${setup.stopLoss}).`,
         };
       }

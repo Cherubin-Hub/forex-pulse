@@ -1,9 +1,9 @@
 import { Calendar } from "lucide-react";
-import { getEconomicEvents } from "@/lib/services/calendar";
+import { getCalendarSnapshot } from "@/lib/services/calendar";
 import { CalendarConsole } from "@/components/calendar/CalendarConsole";
 
 export default async function CalendarPage() {
-  const events = await getEconomicEvents();
+  const { events, available } = await getCalendarSnapshot();
 
   return (
     <div className="space-y-6 w-full">
@@ -14,11 +14,21 @@ export default async function CalendarPage() {
             Macroeconomic Calendar & Volatility Radar
           </h2>
           <p className="text-sm text-muted-foreground mt-1">
-            Track high-impact news catalysts, respect no-trade release windows, and monitor currency events in PHT.
+            Track high-impact news catalysts, respect no-trade release windows,
+            and monitor currency events in PHT.
           </p>
         </div>
       </div>
 
+      {!available && (
+        <p
+          role="status"
+          className="rounded-lg border border-amber-500/30 p-3 text-sm text-amber-500"
+        >
+          Verified calendar coverage is unavailable or stale. New trading
+          entries are paused.
+        </p>
+      )}
       <CalendarConsole events={events} />
     </div>
   );

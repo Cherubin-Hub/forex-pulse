@@ -1,11 +1,18 @@
 "use client";
+import { useSettings } from "@/hooks/useSettings";
 
 import { useState, useEffect } from "react";
 import { Bell, Plus, Trash2, CheckCircle2, Zap, Shield } from "lucide-react";
 import type { PriceAlert, AlertCondition, AlertAction } from "@/types/alert";
 import type { TradingSetup } from "@/types/setup";
 import { getSavedAlerts, saveAlerts } from "@/lib/services/alertEngine";
-import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
+import {
+  Card,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+  CardContent,
+} from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -15,6 +22,7 @@ interface AlertRulesPanelProps {
 }
 
 export function AlertRulesPanel({ setups }: AlertRulesPanelProps) {
+  const { identity } = useSettings();
   const [alerts, setAlerts] = useState<PriceAlert[]>([]);
   const [isOpenForm, setIsOpenForm] = useState(false);
   const [symbol, setSymbol] = useState("EURUSD");
@@ -24,8 +32,8 @@ export function AlertRulesPanel({ setups }: AlertRulesPanelProps) {
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- Hydration match pattern
-    setAlerts(getSavedAlerts());
-  }, []);
+    setAlerts(getSavedAlerts(identity?.userId));
+  }, [identity?.userId]);
 
   const handleAddAlert = (e: React.FormEvent) => {
     e.preventDefault();
@@ -47,7 +55,7 @@ export function AlertRulesPanel({ setups }: AlertRulesPanelProps) {
 
     const nextList = [newAlert, ...alerts];
     setAlerts(nextList);
-    saveAlerts(nextList);
+    saveAlerts(nextList, identity?.userId);
     setTargetPrice("");
     setIsOpenForm(false);
   };
@@ -55,7 +63,7 @@ export function AlertRulesPanel({ setups }: AlertRulesPanelProps) {
   const handleDeleteAlert = (id: string) => {
     const nextList = alerts.filter((a) => a.id !== id);
     setAlerts(nextList);
-    saveAlerts(nextList);
+    saveAlerts(nextList, identity?.userId);
   };
 
   return (
@@ -63,7 +71,9 @@ export function AlertRulesPanel({ setups }: AlertRulesPanelProps) {
       <CardHeader className="flex flex-row items-center justify-between pb-3">
         <div>
           <div className="flex items-center gap-2">
-            <CardTitle className="text-base font-semibold">Signal Automation & Price Alerts</CardTitle>
+            <CardTitle className="text-base font-semibold">
+              Signal Automation & Price Alerts
+            </CardTitle>
             <Badge variant="info">
               {alerts.filter((a) => a.status === "ACTIVE").length} Active
             </Badge>
@@ -90,7 +100,9 @@ export function AlertRulesPanel({ setups }: AlertRulesPanelProps) {
           >
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
               <div>
-                <label className="text-xs font-semibold text-muted-foreground block mb-1">Symbol</label>
+                <label className="text-xs font-semibold text-muted-foreground block mb-1">
+                  Symbol
+                </label>
                 <select
                   value={symbol}
                   onChange={(e) => setSymbol(e.target.value)}
@@ -105,10 +117,14 @@ export function AlertRulesPanel({ setups }: AlertRulesPanelProps) {
               </div>
 
               <div>
-                <label className="text-xs font-semibold text-muted-foreground block mb-1">Condition</label>
+                <label className="text-xs font-semibold text-muted-foreground block mb-1">
+                  Condition
+                </label>
                 <select
                   value={condition}
-                  onChange={(e) => setCondition(e.target.value as AlertCondition)}
+                  onChange={(e) =>
+                    setCondition(e.target.value as AlertCondition)
+                  }
                   className="w-full rounded-md border border-input bg-background px-2.5 py-1.5 text-xs text-foreground"
                 >
                   <option value="PRICE_ABOVE">Price Above</option>
@@ -119,7 +135,9 @@ export function AlertRulesPanel({ setups }: AlertRulesPanelProps) {
               </div>
 
               <div>
-                <label className="text-xs font-semibold text-muted-foreground block mb-1">Target Price</label>
+                <label className="text-xs font-semibold text-muted-foreground block mb-1">
+                  Target Price
+                </label>
                 <Input
                   type="number"
                   step="0.00001"
@@ -132,7 +150,9 @@ export function AlertRulesPanel({ setups }: AlertRulesPanelProps) {
               </div>
 
               <div>
-                <label className="text-xs font-semibold text-muted-foreground block mb-1">Action</label>
+                <label className="text-xs font-semibold text-muted-foreground block mb-1">
+                  Action
+                </label>
                 <select
                   value={action}
                   onChange={(e) => setAction(e.target.value as AlertAction)}
@@ -146,7 +166,9 @@ export function AlertRulesPanel({ setups }: AlertRulesPanelProps) {
             </div>
 
             <div className="flex justify-end pt-2">
-              <Button type="submit" size="sm">Create Automation Rule</Button>
+              <Button type="submit" size="sm">
+                Create Automation Rule
+              </Button>
             </div>
           </form>
         )}
@@ -154,8 +176,12 @@ export function AlertRulesPanel({ setups }: AlertRulesPanelProps) {
         {alerts.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-6 text-center text-muted-foreground">
             <Bell className="h-8 w-8 mb-2 opacity-40" />
-            <p className="text-xs font-medium">No custom price alerts configured.</p>
-            <p className="text-[11px] opacity-70">Add a rule to monitor prices or automatically trail stops.</p>
+            <p className="text-xs font-medium">
+              No custom price alerts configured.
+            </p>
+            <p className="text-[11px] opacity-70">
+              Add a rule to monitor prices or automatically trail stops.
+            </p>
           </div>
         ) : (
           <div className="space-y-2">
@@ -183,22 +209,26 @@ export function AlertRulesPanel({ setups }: AlertRulesPanelProps) {
 
                   <div>
                     <div className="flex items-center gap-2">
-                      <span className="font-bold text-foreground">{alert.symbol}</span>
+                      <span className="font-bold text-foreground">
+                        {alert.symbol}
+                      </span>
                       <span className="text-muted-foreground">
                         {alert.condition === "PRICE_ABOVE" && "≥"}
                         {alert.condition === "PRICE_BELOW" && "≤"}
                         {alert.condition === "PRICE_INSIDE_ZONE" && "Zone In:"}
                         {alert.condition === "BREAKEVEN_REACHED" && "Gain:"}
                       </span>
-                      <span className="font-mono font-semibold text-foreground">{alert.targetPrice}</span>
+                      <span className="font-mono font-semibold text-foreground">
+                        {alert.targetPrice}
+                      </span>
                       <Badge
                         variant={
                           alert.status === "ACTIVE"
                             ? alert.action === "AUTO_TRIGGER"
                               ? "warning"
                               : alert.action === "AUTO_BREAKEVEN"
-                              ? "success"
-                              : "secondary"
+                                ? "success"
+                                : "secondary"
                             : "neutral"
                         }
                       >

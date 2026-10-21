@@ -1,14 +1,8 @@
 "use client";
+import { useSettings } from "@/hooks/useSettings";
 
 import { useState, useEffect } from "react";
-import {
-  Award,
-  Brain,
-  BookOpen,
-  Save,
-  X,
-  Clock,
-} from "lucide-react";
+import { Award, Brain, BookOpen, Save, X, Clock } from "lucide-react";
 import type { TradingSetup } from "@/types/setup";
 import {
   type ExecutionGrade,
@@ -33,11 +27,31 @@ interface TradePostMortemModalProps {
 }
 
 const GRADES: { grade: ExecutionGrade; label: string; desc: string }[] = [
-  { grade: "A", label: "Flawless", desc: "100% plan execution, zero emotional interference" },
-  { grade: "B", label: "Solid", desc: "Good execution with minor, non-critical deviation" },
-  { grade: "C", label: "Hesitant", desc: "Deviated from plan but respected stop loss" },
-  { grade: "D", label: "Impulsive", desc: "Violated risk sizing or moved stop loss" },
-  { grade: "F", label: "Reckless", desc: "FOMO, revenge entry, or complete rule breakdown" },
+  {
+    grade: "A",
+    label: "Flawless",
+    desc: "100% plan execution, zero emotional interference",
+  },
+  {
+    grade: "B",
+    label: "Solid",
+    desc: "Good execution with minor, non-critical deviation",
+  },
+  {
+    grade: "C",
+    label: "Hesitant",
+    desc: "Deviated from plan but respected stop loss",
+  },
+  {
+    grade: "D",
+    label: "Impulsive",
+    desc: "Violated risk sizing or moved stop loss",
+  },
+  {
+    grade: "F",
+    label: "Reckless",
+    desc: "FOMO, revenge entry, or complete rule breakdown",
+  },
 ];
 
 const PSYCHOLOGY_OPTIONS: { state: PsychologicalState; label: string }[] = [
@@ -52,12 +66,30 @@ const PSYCHOLOGY_OPTIONS: { state: PsychologicalState; label: string }[] = [
 
 const MISTAKES: { category: MistakeCategory; label: string }[] = [
   { category: "NONE", label: "None (Executed to Plan)" },
-  { category: "EARLY_ENTRY", label: "Early Entry (Chased before candle close)" },
-  { category: "LATE_CHASE", label: "Late Chase (Entered after momentum moved)" },
-  { category: "MOVED_SL", label: "Moved Stop Loss (Widened risk during drawdown)" },
-  { category: "PREMATURE_EXIT", label: "Premature Exit (Closed before TP/SL target)" },
-  { category: "OVERSIZED", label: "Oversized Position (Exceeded risk percentage)" },
-  { category: "NEWS_GAMBLE", label: "News Gamble (Held through high-impact release)" },
+  {
+    category: "EARLY_ENTRY",
+    label: "Early Entry (Chased before candle close)",
+  },
+  {
+    category: "LATE_CHASE",
+    label: "Late Chase (Entered after momentum moved)",
+  },
+  {
+    category: "MOVED_SL",
+    label: "Moved Stop Loss (Widened risk during drawdown)",
+  },
+  {
+    category: "PREMATURE_EXIT",
+    label: "Premature Exit (Closed before TP/SL target)",
+  },
+  {
+    category: "OVERSIZED",
+    label: "Oversized Position (Exceeded risk percentage)",
+  },
+  {
+    category: "NEWS_GAMBLE",
+    label: "News Gamble (Held through high-impact release)",
+  },
   { category: "IGNORED_HTF_BIAS", label: "Ignored Higher-Timeframe Trend" },
 ];
 
@@ -68,18 +100,23 @@ export function TradePostMortemModal({
   existingReview,
   onSave,
 }: TradePostMortemModalProps) {
-  const [grade, setGrade] = useState<ExecutionGrade>(existingReview?.grade ?? "A");
-  const [psychology, setPsychology] = useState<PsychologicalState>(
-    existingReview?.psychology ?? "DISCIPLINED"
+  const { identity } = useSettings();
+  const [grade, setGrade] = useState<ExecutionGrade>(
+    existingReview?.grade ?? "A",
   );
-  const [mistake, setMistake] = useState<MistakeCategory>(existingReview?.mistake ?? "NONE");
+  const [psychology, setPsychology] = useState<PsychologicalState>(
+    existingReview?.psychology ?? "DISCIPLINED",
+  );
+  const [mistake, setMistake] = useState<MistakeCategory>(
+    existingReview?.mistake ?? "NONE",
+  );
   const [rules, setRules] = useState(
     existingReview?.rulesFollowed ?? {
       planFollowed: true,
       riskManaged: true,
       stopHonored: true,
       targetPatient: true,
-    }
+    },
   );
   const [notes, setNotes] = useState(existingReview?.retrospectiveNotes ?? "");
 
@@ -99,7 +136,10 @@ export function TradePostMortemModal({
 
   const realizedR = calculateRealizedR(setup);
   const realizedPips = calculateRealizedPips(setup);
-  const duration = calculateTradeDuration(setup.createdAt, setup.updatedAt);
+  const duration = calculateTradeDuration(
+    setup.createdAt,
+    setup.closedAt ?? setup.updatedAt,
+  );
   const disciplineScore = calculateDisciplineScore(rules);
 
   const handleSave = () => {
@@ -114,7 +154,7 @@ export function TradePostMortemModal({
       reviewedAt: new Date().toISOString(),
     };
 
-    savePostMortem(postMortem);
+    savePostMortem(postMortem, identity?.userId);
     onSave?.(postMortem);
     onClose();
   };
@@ -140,7 +180,8 @@ export function TradePostMortemModal({
                 Trade Post-Mortem & Execution Review
               </h3>
               <p className="text-xs text-muted-foreground">
-                {setup.symbol} {setup.direction} • Confluences: {setup.confluenceTags.join(", ")}
+                {setup.symbol} {setup.direction} • Confluences:{" "}
+                {setup.confluenceTags.join(", ")}
               </p>
             </div>
           </div>
@@ -163,26 +204,36 @@ export function TradePostMortemModal({
                 realizedR > 0
                   ? "text-emerald-500"
                   : realizedR < 0
-                  ? "text-rose-500"
-                  : "text-muted-foreground"
+                    ? "text-rose-500"
+                    : "text-muted-foreground",
               )}
             >
               {realizedR > 0 ? `+${realizedR}R` : `${realizedR}R`}
             </p>
           </div>
           <div>
-            <p className="text-[11px] text-muted-foreground">Pip Net Movement</p>
+            <p className="text-[11px] text-muted-foreground">
+              Pip Net Movement
+            </p>
             <p
               className={cn(
                 "font-mono font-bold text-sm",
-                realizedPips > 0 ? "text-emerald-500" : realizedPips < 0 ? "text-rose-500" : "text-muted-foreground"
+                realizedPips > 0
+                  ? "text-emerald-500"
+                  : realizedPips < 0
+                    ? "text-rose-500"
+                    : "text-muted-foreground",
               )}
             >
-              {realizedPips > 0 ? `+${realizedPips} pips` : `${realizedPips} pips`}
+              {realizedPips > 0
+                ? `+${realizedPips} pips`
+                : `${realizedPips} pips`}
             </p>
           </div>
           <div>
-            <p className="text-[11px] text-muted-foreground">Holding Duration</p>
+            <p className="text-[11px] text-muted-foreground">
+              Holding Duration
+            </p>
             <p className="font-mono font-bold text-sm text-foreground flex items-center gap-1">
               <Clock className="h-3 w-3 text-muted-foreground" /> {duration}
             </p>
@@ -193,7 +244,12 @@ export function TradePostMortemModal({
         <div className="space-y-2">
           <label className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground flex items-center justify-between">
             <span>Execution Quality Grade</span>
-            <span className={cn("rounded border px-2 py-0.5 text-[10px] font-mono font-bold", getGradeBadgeColor(grade))}>
+            <span
+              className={cn(
+                "rounded border px-2 py-0.5 text-[10px] font-mono font-bold",
+                getGradeBadgeColor(grade),
+              )}
+            >
               Grade {grade}
             </span>
           </label>
@@ -207,11 +263,15 @@ export function TradePostMortemModal({
                   "flex flex-col items-center justify-center p-2 rounded-lg border text-center transition-all",
                   grade === g.grade
                     ? "border-primary bg-primary/10 shadow-sm"
-                    : "border-border hover:bg-muted/50"
+                    : "border-border hover:bg-muted/50",
                 )}
               >
-                <span className="text-base font-extrabold font-mono">{g.grade}</span>
-                <span className="text-[10px] font-semibold text-muted-foreground">{g.label}</span>
+                <span className="text-base font-extrabold font-mono">
+                  {g.grade}
+                </span>
+                <span className="text-[10px] font-semibold text-muted-foreground">
+                  {g.label}
+                </span>
               </button>
             ))}
           </div>
@@ -233,7 +293,7 @@ export function TradePostMortemModal({
                   "px-2.5 py-1 rounded-lg text-xs font-medium border transition-colors",
                   psychology === p.state
                     ? "bg-primary text-primary-foreground border-primary"
-                    : "border-border bg-muted/30 text-muted-foreground hover:bg-muted hover:text-foreground"
+                    : "border-border bg-muted/30 text-muted-foreground hover:bg-muted hover:text-foreground",
                 )}
               >
                 {p.label}
@@ -246,7 +306,9 @@ export function TradePostMortemModal({
         <div className="space-y-2 rounded-xl border border-border/80 bg-muted/20 p-3">
           <div className="flex items-center justify-between text-xs font-semibold">
             <span>Rule Adherence Checklist</span>
-            <span className="font-mono text-primary font-bold">Discipline Score: {disciplineScore}%</span>
+            <span className="font-mono text-primary font-bold">
+              Discipline Score: {disciplineScore}%
+            </span>
           </div>
 
           <div className="grid sm:grid-cols-2 gap-2 text-xs pt-1">
@@ -254,7 +316,9 @@ export function TradePostMortemModal({
               <input
                 type="checkbox"
                 checked={rules.planFollowed}
-                onChange={(e) => setRules((r) => ({ ...r, planFollowed: e.target.checked }))}
+                onChange={(e) =>
+                  setRules((r) => ({ ...r, planFollowed: e.target.checked }))
+                }
                 className="rounded border-border"
               />
               <span>Followed entry playbook rules</span>
@@ -263,7 +327,9 @@ export function TradePostMortemModal({
               <input
                 type="checkbox"
                 checked={rules.riskManaged}
-                onChange={(e) => setRules((r) => ({ ...r, riskManaged: e.target.checked }))}
+                onChange={(e) =>
+                  setRules((r) => ({ ...r, riskManaged: e.target.checked }))
+                }
                 className="rounded border-border"
               />
               <span>Proper position sizing limit</span>
@@ -272,7 +338,9 @@ export function TradePostMortemModal({
               <input
                 type="checkbox"
                 checked={rules.stopHonored}
-                onChange={(e) => setRules((r) => ({ ...r, stopHonored: e.target.checked }))}
+                onChange={(e) =>
+                  setRules((r) => ({ ...r, stopHonored: e.target.checked }))
+                }
                 className="rounded border-border"
               />
               <span>Honored structural Stop Loss</span>
@@ -281,7 +349,9 @@ export function TradePostMortemModal({
               <input
                 type="checkbox"
                 checked={rules.targetPatient}
-                onChange={(e) => setRules((r) => ({ ...r, targetPatient: e.target.checked }))}
+                onChange={(e) =>
+                  setRules((r) => ({ ...r, targetPatient: e.target.checked }))
+                }
                 className="rounded border-border"
               />
               <span>Patient with target execution</span>

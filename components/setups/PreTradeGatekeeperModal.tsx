@@ -16,7 +16,10 @@ import type { TradingSetup } from "@/types/setup";
 import type { EconomicEvent } from "@/types/calendar";
 import { useSettings } from "@/hooks/useSettings";
 import { useNow } from "@/hooks/useNow";
-import { evaluatePreTradeAudit, type AuditVerdict } from "@/lib/gatekeeperUtils";
+import {
+  evaluatePreTradeAudit,
+  type AuditVerdict,
+} from "@/lib/gatekeeperUtils";
 import { cn } from "@/lib/utils";
 
 interface PreTradeGatekeeperModalProps {
@@ -24,6 +27,7 @@ interface PreTradeGatekeeperModalProps {
   isOpen: boolean;
   onClose: () => void;
   onConfirm: () => void;
+  dataAvailable: boolean;
   events?: EconomicEvent[];
   activeSetups?: TradingSetup[];
 }
@@ -35,6 +39,7 @@ export function PreTradeGatekeeperModal({
   onConfirm,
   events,
   activeSetups,
+  dataAvailable,
 }: PreTradeGatekeeperModalProps) {
   const { settings } = useSettings();
   const now = useNow();
@@ -44,7 +49,6 @@ export function PreTradeGatekeeperModal({
   const [affirmedPlan, setAffirmedPlan] = useState(false);
   const [affirmedStopLoss, setAffirmedStopLoss] = useState(false);
   const [affirmedRisk, setAffirmedRisk] = useState(false);
-  const [overrideAcknowledged, setOverrideAcknowledged] = useState(false);
 
   const auditEvents = useMemo(() => {
     return events ?? [];
@@ -56,14 +60,21 @@ export function PreTradeGatekeeperModal({
 
   const audit = useMemo(() => {
     if (!now) return null;
-    return evaluatePreTradeAudit(setup, auditEvents, auditSetups, settings, now);
+    return evaluatePreTradeAudit(
+      setup,
+      auditEvents,
+      auditSetups,
+      settings,
+      now,
+    );
   }, [setup, auditEvents, auditSetups, settings, now]);
 
   if (!isOpen) return null;
 
   const isAllAffirmed = affirmedPlan && affirmedStopLoss && affirmedRisk;
   const isBlocked = audit?.overallVerdict === "BLOCKED";
-  const canExecute = isAllAffirmed && (!isBlocked || overrideAcknowledged);
+  const canExecute =
+    Boolean(audit) && dataAvailable && isAllAffirmed && !isBlocked;
 
   const handleExecute = () => {
     startTransition(() => {
@@ -116,7 +127,8 @@ export function PreTradeGatekeeperModal({
                 Digital Disciplinarian • Pre-Flight Gatekeeper
               </h3>
               <p className="text-xs text-muted-foreground">
-                Verifying {setup.symbol} {setup.direction} (Target RR 1:{setup.riskReward.toFixed(1)})
+                Verifying {setup.symbol} {setup.direction} (Target RR 1:
+                {setup.riskReward.toFixed(1)})
               </p>
             </div>
           </div>
@@ -195,7 +207,8 @@ export function PreTradeGatekeeperModal({
               className="mt-0.5 rounded border-border"
             />
             <span className="leading-tight">
-              I am entering strictly according to my playbook, <strong>NOT</strong> from FOMO or emotional impulse.
+              I am entering strictly according to my playbook,{" "}
+              <strong>NOT</strong> from FOMO or emotional impulse.
             </span>
           </label>
 
@@ -207,7 +220,8 @@ export function PreTradeGatekeeperModal({
               className="mt-0.5 rounded border-border"
             />
             <span className="leading-tight">
-              My Stop Loss is anchored to market structure, and I fully accept this financial risk.
+              My Stop Loss is anchored to market structure, and I fully accept
+              this financial risk.
             </span>
           </label>
 
@@ -219,25 +233,16 @@ export function PreTradeGatekeeperModal({
               className="mt-0.5 rounded border-border"
             />
             <span className="leading-tight">
-              I will never widen my Stop Loss or revenge trade if the market invalidates this position.
+              I will never widen my Stop Loss or revenge trade if the market
+              invalidates this position.
             </span>
           </label>
 
-          {/* Block Override Checkbox */}
-          {isBlocked && (
-            <div className="pt-2 border-t border-rose-500/30">
-              <label className="flex items-start gap-2 text-xs text-rose-500 font-semibold cursor-pointer select-none">
-                <input
-                  type="checkbox"
-                  checked={overrideAcknowledged}
-                  onChange={(e) => setOverrideAcknowledged(e.target.checked)}
-                  className="mt-0.5 rounded border-rose-500"
-                />
-                <span className="leading-tight">
-                  Override Disciplinarian Block (I acknowledge high risk of slippage / risk breach).
-                </span>
-              </label>
-            </div>
+          {/* Missing verified coverage cannot be overridden. */}
+          {!dataAvailable && (
+            <p className="text-xs text-rose-500">
+              Verified calendar coverage is unavailable. Saving is blocked.
+            </p>
           )}
         </div>
 
@@ -259,7 +264,7 @@ export function PreTradeGatekeeperModal({
               "inline-flex items-center gap-1.5 rounded-lg px-4 py-1.5 text-xs font-semibold transition-all",
               canExecute
                 ? "bg-primary text-primary-foreground hover:bg-primary/90 shadow-sm"
-                : "bg-muted text-muted-foreground cursor-not-allowed opacity-60"
+                : "bg-muted text-muted-foreground cursor-not-allowed opacity-60",
             )}
           >
             {isPending ? (
@@ -269,7 +274,7 @@ export function PreTradeGatekeeperModal({
             ) : (
               <CheckCircle2 className="h-3.5 w-3.5" />
             )}
-            <span>Confirm & Trigger Entry</span>
+            <span>Save after risk checks</span>
           </button>
         </div>
       </div>

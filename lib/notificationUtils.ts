@@ -8,10 +8,10 @@ const OFFLINE_READ_IDS_KEY = "fp_read_notification_ids_v1";
 /**
  * Retrieves offline cached read notification IDs from LocalStorage.
  */
-export function getOfflineReadIds(): Set<string> {
-  if (typeof window === "undefined") return new Set<string>();
+export function getOfflineReadIds(userId?: string): Set<string> {
+  if (!userId || typeof window === "undefined") return new Set<string>();
   try {
-    const raw = localStorage.getItem(OFFLINE_READ_IDS_KEY);
+    const raw = localStorage.getItem(`${OFFLINE_READ_IDS_KEY}:${userId}`);
     if (!raw) return new Set<string>();
     const parsed = JSON.parse(raw) as string[];
     return new Set<string>(parsed);
@@ -23,12 +23,15 @@ export function getOfflineReadIds(): Set<string> {
 /**
  * Persists an offline read notification ID into LocalStorage.
  */
-export function saveOfflineReadId(id: string): void {
-  if (typeof window === "undefined") return;
+export function saveOfflineReadId(id: string, userId?: string): void {
+  if (!userId || typeof window === "undefined") return;
   try {
-    const current = getOfflineReadIds();
+    const current = getOfflineReadIds(userId);
     current.add(id);
-    localStorage.setItem(OFFLINE_READ_IDS_KEY, JSON.stringify(Array.from(current)));
+    localStorage.setItem(
+      `${OFFLINE_READ_IDS_KEY}:${userId}`,
+      JSON.stringify(Array.from(current)),
+    );
   } catch (err) {
     console.debug("[NotificationUtils] Failed to persist read ID:", err);
   }
@@ -37,12 +40,15 @@ export function saveOfflineReadId(id: string): void {
 /**
  * Persists multiple read notification IDs into LocalStorage.
  */
-export function saveAllOfflineReadIds(ids: string[]): void {
-  if (typeof window === "undefined") return;
+export function saveAllOfflineReadIds(ids: string[], userId?: string): void {
+  if (!userId || typeof window === "undefined") return;
   try {
-    const current = getOfflineReadIds();
+    const current = getOfflineReadIds(userId);
     ids.forEach((id) => current.add(id));
-    localStorage.setItem(OFFLINE_READ_IDS_KEY, JSON.stringify(Array.from(current)));
+    localStorage.setItem(
+      `${OFFLINE_READ_IDS_KEY}:${userId}`,
+      JSON.stringify(Array.from(current)),
+    );
   } catch (err) {
     console.debug("[NotificationUtils] Failed to persist read IDs:", err);
   }
@@ -56,7 +62,7 @@ export function generateSystemNotifications(
   persistedNotifications: SystemNotification[],
   events: EconomicEvent[],
   setups: TradingSetup[],
-  now: Date
+  now: Date,
 ): SystemNotification[] {
   const map = new Map<string, SystemNotification>();
 
@@ -80,7 +86,9 @@ export function generateSystemNotifications(
           id: eventId,
           type: "NEWS_RISK",
           priority: isImminent ? "CRITICAL" : "HIGH",
-          title: isImminent ? `🚨 NO-TRADE ZONE: ${event.title}` : `High-Impact Catalyst Approaching`,
+          title: isImminent
+            ? `🚨 NO-TRADE ZONE: ${event.title}`
+            : `High-Impact Catalyst Approaching`,
           message: `${event.currency} release scheduled in ${formatDuration(msUntil)} (${formatClockPHT(event.scheduledAt)} PHT). Volatility expected.`,
           timestamp: new Date().toISOString(),
           read: existing ? existing.read : false,
@@ -127,7 +135,8 @@ export function generateSystemNotifications(
 
   // 4. Portfolio Capacity Warnings
   const openCount = setups.filter(
-    (s) => s.status === "WAITING_FOR_CONFIRMATION" || s.status === "ENTRY_TRIGGERED"
+    (s) =>
+      s.status === "WAITING_FOR_CONFIRMATION" || s.status === "ENTRY_TRIGGERED",
   ).length;
 
   if (openCount >= 3) {
@@ -152,6 +161,6 @@ export function generateSystemNotifications(
   return Array.from(map.values()).sort(
     (a, b) =>
       priorityWeight[b.priority] - priorityWeight[a.priority] ||
-      new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
+      new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime(),
   );
 }

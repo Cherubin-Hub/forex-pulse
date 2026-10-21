@@ -1,4 +1,5 @@
 "use client";
+import { useSettings } from "@/hooks/useSettings";
 
 import { useState, useEffect, useMemo } from "react";
 import { Download, Search } from "lucide-react";
@@ -20,18 +21,27 @@ import { Input } from "@/components/ui/input";
 
 type FilterStatus = "ALL" | "TP_REACHED" | "SL_HIT" | "INVALIDATED";
 
-export function SetupHistoryView({ initialSetups }: { initialSetups: TradingSetup[] }) {
+export function SetupHistoryView({
+  initialSetups,
+}: {
+  initialSetups: TradingSetup[];
+}) {
+  const { identity } = useSettings();
   const [filterStatus, setFilterStatus] = useState<FilterStatus>("ALL");
-  const [selectedDirection, setSelectedDirection] = useState<"ALL" | "LONG" | "SHORT">("ALL");
-  const [selectedGrade, setSelectedGrade] = useState<"ALL" | ExecutionGrade>("ALL");
+  const [selectedDirection, setSelectedDirection] = useState<
+    "ALL" | "LONG" | "SHORT"
+  >("ALL");
+  const [selectedGrade, setSelectedGrade] = useState<"ALL" | ExecutionGrade>(
+    "ALL",
+  );
   const [searchQuery, setSearchQuery] = useState("");
   const [reviews, setReviews] = useState<Record<string, TradePostMortem>>({});
 
   // Sync post-mortems from localStorage with hydration safety
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- Hydration match pattern
-    setReviews(loadAllPostMortems());
-  }, []);
+    setReviews(loadAllPostMortems(identity?.userId));
+  }, [identity?.userId]);
 
   // Filtered setups based on active status, direction, grade, and keyword search
   const filteredSetups = useMemo(() => {
@@ -39,7 +49,9 @@ export function SetupHistoryView({ initialSetups }: { initialSetups: TradingSetu
       const matchesStatus =
         filterStatus === "ALL" ? true : setup.status === filterStatus;
       const matchesDirection =
-        selectedDirection === "ALL" ? true : setup.direction === selectedDirection;
+        selectedDirection === "ALL"
+          ? true
+          : setup.direction === selectedDirection;
 
       const review = reviews[setup.id];
       const matchesGrade =
@@ -54,7 +66,14 @@ export function SetupHistoryView({ initialSetups }: { initialSetups: TradingSetu
 
       return matchesStatus && matchesDirection && matchesGrade && matchesSearch;
     });
-  }, [initialSetups, filterStatus, selectedDirection, selectedGrade, searchQuery, reviews]);
+  }, [
+    initialSetups,
+    filterStatus,
+    selectedDirection,
+    selectedGrade,
+    searchQuery,
+    reviews,
+  ]);
 
   // Analytics calculated across all historical setups
   const analytics = useMemo(() => {
@@ -152,7 +171,9 @@ export function SetupHistoryView({ initialSetups }: { initialSetups: TradingSetu
         <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-border/50 text-xs">
           {/* Direction */}
           <div className="flex items-center gap-1">
-            <span className="text-[11px] font-medium text-muted-foreground mr-1">Direction:</span>
+            <span className="text-[11px] font-medium text-muted-foreground mr-1">
+              Direction:
+            </span>
             <Button
               variant={selectedDirection === "ALL" ? "secondary" : "ghost"}
               size="sm"
@@ -181,7 +202,9 @@ export function SetupHistoryView({ initialSetups }: { initialSetups: TradingSetu
 
           {/* Grade Filter */}
           <div className="flex items-center gap-1">
-            <span className="text-[11px] font-medium text-muted-foreground mr-1">Grade:</span>
+            <span className="text-[11px] font-medium text-muted-foreground mr-1">
+              Grade:
+            </span>
             {(["ALL", "A", "B", "C", "D", "F"] as const).map((g) => (
               <Button
                 key={g}

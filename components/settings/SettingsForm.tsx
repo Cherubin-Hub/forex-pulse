@@ -14,30 +14,42 @@ import {
   settingsSchema,
   type UserSettings,
 } from "@/lib/schemas/settings";
-import { NEWS_SENSITIVITY_OPTIONS, TRADER_PROFILE_OPTIONS } from "@/lib/constants/settings";
+import {
+  NEWS_SENSITIVITY_OPTIONS,
+  TRADER_PROFILE_OPTIONS,
+} from "@/lib/constants/settings";
 import { MARKET_SESSIONS } from "@/lib/constants/sessions";
 import { useSettings } from "@/hooks/useSettings";
 import { SettingsSection } from "@/components/settings/SettingsSection";
-import { RadioCardGroup, type RadioCardOption } from "@/components/settings/RadioCardGroup";
+import {
+  RadioCardGroup,
+  type RadioCardOption,
+} from "@/components/settings/RadioCardGroup";
 import { cn } from "@/lib/utils";
 
-const PROFILE_OPTIONS: RadioCardOption<UserSettings["traderProfile"]>[] = TRADER_PROFILE_VALUES.map((value) => ({
-  value,
-  label: TRADER_PROFILE_OPTIONS[value].label,
-  description: TRADER_PROFILE_OPTIONS[value].description,
-  meta: TRADER_PROFILE_OPTIONS[value].timeframes.join(" · "),
-}));
+const PROFILE_OPTIONS: RadioCardOption<UserSettings["traderProfile"]>[] =
+  TRADER_PROFILE_VALUES.map((value) => ({
+    value,
+    label: TRADER_PROFILE_OPTIONS[value].label,
+    description: TRADER_PROFILE_OPTIONS[value].description,
+    meta: TRADER_PROFILE_OPTIONS[value].timeframes.join(" · "),
+  }));
 
-const NEWS_OPTIONS: RadioCardOption<UserSettings["newsSensitivity"]>[] = NEWS_SENSITIVITY_VALUES.map((value) => ({
-  value,
-  label: NEWS_SENSITIVITY_OPTIONS[value].label,
-  description: NEWS_SENSITIVITY_OPTIONS[value].description,
-  meta: `${NEWS_SENSITIVITY_OPTIONS[value].preReleaseMinutes}m before · ${NEWS_SENSITIVITY_OPTIONS[value].postReleaseMinutes}m after`,
-}));
+const NEWS_OPTIONS: RadioCardOption<UserSettings["newsSensitivity"]>[] =
+  NEWS_SENSITIVITY_VALUES.map((value) => ({
+    value,
+    label: NEWS_SENSITIVITY_OPTIONS[value].label,
+    description: NEWS_SENSITIVITY_OPTIONS[value].description,
+    meta: `${NEWS_SENSITIVITY_OPTIONS[value].preReleaseMinutes}m before · ${NEWS_SENSITIVITY_OPTIONS[value].postReleaseMinutes}m after`,
+  }));
 
 function FieldError({ message }: { message?: string }) {
   if (!message) return null;
-  return <p className="mt-1.5 text-xs font-medium text-rose-600 dark:text-rose-400">{message}</p>;
+  return (
+    <p className="mt-1.5 text-xs font-medium text-rose-600 dark:text-rose-400">
+      {message}
+    </p>
+  );
 }
 
 export function SettingsForm() {
@@ -67,16 +79,18 @@ export function SettingsForm() {
     return () => clearTimeout(timeoutId);
   }, [justSaved]);
 
-  const onSubmit = (data: UserSettings) => {
-    updateSettings(data);
-    setJustSaved(true);
+  const onSubmit = async (data: UserSettings) => {
+    setJustSaved(await updateSettings(data));
   };
 
   if (!isLoaded) {
     return (
       <div className="space-y-6">
         {Array.from({ length: 4 }).map((_, i) => (
-          <div key={i} className="h-40 animate-pulse rounded-xl border border-border bg-card" />
+          <div
+            key={i}
+            className="h-40 animate-pulse rounded-xl border border-border bg-card"
+          />
         ))}
       </div>
     );
@@ -84,6 +98,46 @@ export function SettingsForm() {
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-6 pb-24">
+      <SettingsSection
+        title="Account and automation"
+        description="USD account values used throughout sizing, exposure, and drawdown calculations."
+      >
+        <div className="grid gap-4 sm:grid-cols-3">
+          <div>
+            <Label htmlFor="accountBalance">Account balance (USD)</Label>
+            <Input
+              id="accountBalance"
+              type="number"
+              step="0.01"
+              {...register("accountBalance", { valueAsNumber: true })}
+            />
+            <FieldError message={errors.accountBalance?.message} />
+          </div>
+          <div>
+            <Label htmlFor="leverage">Leverage (1:x)</Label>
+            <Input
+              id="leverage"
+              type="number"
+              {...register("leverage", { valueAsNumber: true })}
+            />
+            <FieldError message={errors.leverage?.message} />
+          </div>
+          <div>
+            <Label htmlFor="maxDailyLossR">Daily loss limit (R)</Label>
+            <Input
+              id="maxDailyLossR"
+              type="number"
+              step="0.1"
+              {...register("maxDailyLossR", { valueAsNumber: true })}
+            />
+            <FieldError message={errors.maxDailyLossR?.message} />
+          </div>
+        </div>
+        <label className="mt-3 flex items-center gap-2 text-sm">
+          <input type="checkbox" {...register("automationEnabled")} />
+          Enable automatic setup creation and monitoring
+        </label>
+      </SettingsSection>
       {/* Trader profile */}
       <SettingsSection
         title="Trader Profile"
@@ -93,7 +147,12 @@ export function SettingsForm() {
           name="traderProfile"
           control={control}
           render={({ field }) => (
-            <RadioCardGroup name="traderProfile" options={PROFILE_OPTIONS} value={field.value} onChange={field.onChange} />
+            <RadioCardGroup
+              name="traderProfile"
+              options={PROFILE_OPTIONS}
+              value={field.value}
+              onChange={field.onChange}
+            />
           )}
         />
       </SettingsSection>
@@ -153,7 +212,9 @@ export function SettingsForm() {
           render={({ field }) => {
             const toggle = (id: UserSettings["sessionFocus"][number]) => {
               field.onChange(
-                field.value.includes(id) ? field.value.filter((v) => v !== id) : [...field.value, id]
+                field.value.includes(id)
+                  ? field.value.filter((v) => v !== id)
+                  : [...field.value, id],
               );
             };
 
@@ -172,7 +233,7 @@ export function SettingsForm() {
                         "inline-flex items-center gap-2 rounded-full border px-4 py-2 text-sm font-medium transition-colors",
                         isSelected
                           ? "border-primary bg-primary text-primary-foreground"
-                          : "border-border text-muted-foreground hover:text-foreground"
+                          : "border-border text-muted-foreground hover:text-foreground",
                       )}
                     >
                       {isSelected && <Check className="h-3.5 w-3.5" />}
@@ -196,14 +257,25 @@ export function SettingsForm() {
           name="newsSensitivity"
           control={control}
           render={({ field }) => (
-            <RadioCardGroup name="newsSensitivity" options={NEWS_OPTIONS} value={field.value} onChange={field.onChange} />
+            <RadioCardGroup
+              name="newsSensitivity"
+              options={NEWS_OPTIONS}
+              value={field.value}
+              onChange={field.onChange}
+            />
           )}
         />
       </SettingsSection>
 
       {/* Sticky action bar */}
       <div className="sticky bottom-4 z-20 flex items-center justify-between gap-3 rounded-xl border border-border bg-background/80 p-3 shadow-lg backdrop-blur-md">
-        <Button type="button" variant="ghost" onClick={resetSettings}>
+        <Button
+          type="button"
+          variant="ghost"
+          onClick={() => {
+            void resetSettings();
+          }}
+        >
           <RotateCcw className="mr-2 h-4 w-4" />
           Reset to defaults
         </Button>
@@ -222,7 +294,11 @@ export function SettingsForm() {
               </motion.span>
             )}
           </AnimatePresence>
-          {isDirty && !justSaved && <span className="text-sm text-muted-foreground">Unsaved changes</span>}
+          {isDirty && !justSaved && (
+            <span className="text-sm text-muted-foreground">
+              Unsaved changes
+            </span>
+          )}
           <Button type="submit" disabled={!isDirty || isSubmitting}>
             Save changes
           </Button>

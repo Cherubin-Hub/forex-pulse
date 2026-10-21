@@ -1,33 +1,11 @@
-export interface GatewaySessionData {
-  userId: string;
-  email: string;
-  authenticatedVia: string;
-  issuedAt: number;
-}
-
-export interface SessionVerificationResult {
-  valid: boolean;
-  data?: GatewaySessionData;
-}
-
-/**
- * Normalizes a base URL by removing accidental wrapping quotes,
- * trimming whitespace, ensuring the https:// or http:// protocol prefix,
- * and stripping any trailing slash.
- */
-export function normalizeBaseUrl(rawUrl?: string | null, fallback = "http://localhost:3000"): string {
-  if (!rawUrl || typeof rawUrl !== "string") {
-    return fallback;
-  }
-  let url = rawUrl.trim().replace(/^['"`]+|['"`]+$/g, "");
-  if (!url) {
-    return fallback;
-  }
-  if (!url.startsWith("http://") && !url.startsWith("https://")) {
-    url = `https://${url}`;
-  }
-  return url.replace(/\/+$/, "");
-}
+import type {
+  GatewaySessionData,
+  SessionVerificationResult,
+} from "@/types/auth";
+export type {
+  GatewaySessionData,
+  SessionVerificationResult,
+} from "@/types/auth";
 
 function bufferToBase64Url(buffer: ArrayBuffer): string {
   const bytes = new Uint8Array(buffer);
@@ -70,7 +48,9 @@ function base64UrlToString(base64Url: string): string {
  * Signs a session payload using Web Crypto HMAC-SHA256.
  * Fully compatible with Vercel Edge Runtime, Cloudflare Workers, and Node.js.
  */
-export async function signSessionPayload(data: GatewaySessionData): Promise<string> {
+export async function signSessionPayload(
+  data: GatewaySessionData,
+): Promise<string> {
   const secret = process.env.CROSS_APP_SSO_SECRET;
   if (!secret) {
     throw new Error("CROSS_APP_SSO_SECRET is not configured on Forex Pulse.");
@@ -85,13 +65,13 @@ export async function signSessionPayload(data: GatewaySessionData): Promise<stri
     encoder.encode(secret),
     { name: "HMAC", hash: "SHA-256" },
     false,
-    ["sign"]
+    ["sign"],
   );
 
   const signatureBuffer = await crypto.subtle.sign(
     "HMAC",
     key,
-    encoder.encode(payloadBase64)
+    encoder.encode(payloadBase64),
   );
 
   const signatureBase64 = bufferToBase64Url(signatureBuffer);
@@ -102,7 +82,9 @@ export async function signSessionPayload(data: GatewaySessionData): Promise<stri
  * Validates that a session cookie was signed by CROSS_APP_SSO_SECRET
  * and has not expired (maximum 7-day lifespan).
  */
-export async function verifySessionToken(token: string): Promise<SessionVerificationResult> {
+export async function verifySessionToken(
+  token: string,
+): Promise<SessionVerificationResult> {
   const secret = process.env.CROSS_APP_SSO_SECRET;
   if (!secret || !token) {
     return { valid: false };
@@ -122,7 +104,7 @@ export async function verifySessionToken(token: string): Promise<SessionVerifica
       encoder.encode(secret),
       { name: "HMAC", hash: "SHA-256" },
       false,
-      ["verify"]
+      ["verify"],
     );
 
     const signatureBuffer = base64UrlToArrayBuffer(signatureBase64);
@@ -130,7 +112,7 @@ export async function verifySessionToken(token: string): Promise<SessionVerifica
       "HMAC",
       key,
       signatureBuffer,
-      encoder.encode(payloadBase64)
+      encoder.encode(payloadBase64),
     );
 
     if (!isValid) {
@@ -138,13 +120,23 @@ export async function verifySessionToken(token: string): Promise<SessionVerifica
     }
 
     const payloadJson = base64UrlToString(payloadBase64);
-    const data: GatewaySessionData = JSON.parse(payloadJson);
+    const data = JSON.parse(payloadJson) as GatewaySessionData;
+    if (
+      !data ||
+      typeof data.userId !== "string" ||
+      !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
+        data.userId,
+      ) ||
+      typeof data.email !== "string" ||
+      !Number.isFinite(data.issuedAt)
+    )
+      return { valid: false };
 
     // Enforce 7-day expiration (in milliseconds)
     const maxAgeMs = 7 * 24 * 60 * 60 * 1000;
     const now = Date.now();
 
-    if (now - data.issuedAt > maxAgeMs) {
+    if (data.issuedAt > now + 5000 || now - data.issuedAt > maxAgeMs) {
       return { valid: false };
     }
 

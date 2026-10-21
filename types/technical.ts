@@ -12,6 +12,8 @@ export type TechnicalAnalysis = {
   symbol: string;
   timeframes: Record<Timeframe, IndicatorData>;
   overallBias: TrendDirection;
+  status?: "LIVE" | "MOCK" | "UNAVAILABLE";
+  timestamp?: string;
 };
 
 export type PivotLevels = {

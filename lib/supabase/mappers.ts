@@ -4,7 +4,11 @@ import type { SessionReport, KeyLevelBrief } from "@/types/report";
 import type { EconomicEvent } from "@/types/calendar";
 import type { NewsArticle } from "@/types/news";
 import type { GoldDriver, KeyLevel } from "@/types/gold";
-import type { TechnicalAnalysis, Timeframe, IndicatorData } from "@/types/technical";
+import type {
+  TechnicalAnalysis,
+  Timeframe,
+  IndicatorData,
+} from "@/types/technical";
 import type { SystemNotification } from "@/types/notification";
 
 type SetupRow = Database["public"]["Tables"]["trading_setups"]["Row"];
@@ -13,7 +17,8 @@ type EventRow = Database["public"]["Tables"]["economic_events"]["Row"];
 type NewsRow = Database["public"]["Tables"]["market_news"]["Row"];
 type GoldDriverRow = Database["public"]["Tables"]["gold_drivers"]["Row"];
 type GoldKeyLevelRow = Database["public"]["Tables"]["gold_key_levels"]["Row"];
-type TechnicalAnalysisRow = Database["public"]["Tables"]["technical_analysis"]["Row"];
+type TechnicalAnalysisRow =
+  Database["public"]["Tables"]["technical_analysis"]["Row"];
 type NotificationRow = Database["public"]["Tables"]["notifications"]["Row"];
 
 /**
@@ -30,6 +35,11 @@ export function mapRowToSetup(row: SetupRow): TradingSetup {
     takeProfit1: Number(row.take_profit_1),
     takeProfit2: row.take_profit_2 !== null ? Number(row.take_profit_2) : null,
     riskReward: Number(row.risk_reward),
+    originalStopLoss:
+      row.original_stop_loss === null ? null : Number(row.original_stop_loss),
+    realizedR: row.realized_r === null ? null : Number(row.realized_r),
+    closedAt: row.closed_at,
+    riskPercent: Number(row.risk_percent),
     status: row.status,
     invalidationRule: row.invalidation_rule,
     notes: row.notes ?? "",
@@ -125,10 +135,13 @@ export function mapRowToKeyLevel(row: GoldKeyLevelRow): KeyLevel {
 /**
  * Maps a Supabase snake_case technical analysis row to our application's TechnicalAnalysis model.
  */
-export function mapRowToTechnicalAnalysis(row: TechnicalAnalysisRow): TechnicalAnalysis {
+export function mapRowToTechnicalAnalysis(
+  row: TechnicalAnalysisRow,
+): TechnicalAnalysis {
   return {
     symbol: row.symbol,
-    timeframes: (row.timeframes as unknown as Record<Timeframe, IndicatorData>) ?? {},
+    timeframes:
+      (row.timeframes as unknown as Record<Timeframe, IndicatorData>) ?? {},
     overallBias: row.overall_bias,
   };
 }

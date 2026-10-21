@@ -1,6 +1,7 @@
 import type { TradingSetup } from "@/types/setup";
 import type { EconomicEvent } from "@/types/calendar";
 import type { UserSettings } from "@/lib/schemas/settings";
+import { getNewsWindows } from "@/lib/settings";
 import { INSTRUMENTS } from "@/lib/constants/instruments";
 
 export type AuditVerdict = "PASS" | "WARNING" | "BLOCKED";
@@ -36,7 +37,7 @@ export function evaluatePreTradeAudit(
   events: EconomicEvent[],
   activeSetups: TradingSetup[],
   settings: UserSettings,
-  now: Date
+  now: Date,
 ): GatekeeperAuditResult {
   const inst = INSTRUMENTS.find((i) => i.symbol === setup.symbol);
   const baseCurr = inst?.base ?? setup.symbol.slice(0, 3);
@@ -44,42 +45,47 @@ export function evaluatePreTradeAudit(
 
   // 1. Macro News Check (Red Folder High Impact Proximity)
   const nowMs = now.getTime();
+  const windows = getNewsWindows(settings);
   const relevantHighEvents = events
-    .filter((e) => e.impact === "HIGH" && (e.currency === baseCurr || e.currency === quoteCurr))
-    .map((e) => {
-      const msUntil = new Date(e.scheduledAt).getTime() - nowMs;
-      const minutesUntil = Math.round(msUntil / 60000);
-      return { event: e, minutesUntil };
-    })
-    // Filter to events within next 45 minutes or released within last 15 minutes
-    .filter((item) => item.minutesUntil >= -15 && item.minutesUntil <= 45)
+    .filter(
+      (event) =>
+        event.status === "LIVE" &&
+        event.impact === "HIGH" &&
+        (event.currency === baseCurr || event.currency === quoteCurr),
+    )
+    .map((event) => ({
+      event,
+      minutesUntil: (Date.parse(event.scheduledAt) - nowMs) / 60000,
+    }))
+    .filter(
+      (item) =>
+        item.minutesUntil >= -windows.postReleaseMinutes &&
+        item.minutesUntil <= windows.preReleaseMinutes,
+    )
     .sort((a, b) => Math.abs(a.minutesUntil) - Math.abs(b.minutesUntil));
-
   const conflict = relevantHighEvents[0] ?? null;
-
-  let newsVerdict: AuditVerdict = "PASS";
-  let newsMessage = `No high-impact news for ${baseCurr}/${quoteCurr} within 45 minutes.`;
-
-  if (conflict) {
-    if (conflict.minutesUntil > 0 && conflict.minutesUntil <= 15) {
-      newsVerdict = "BLOCKED";
-      newsMessage = `High-Impact ${conflict.event.title} (${conflict.event.currency}) in ${conflict.minutesUntil}m! Severe slippage risk.`;
-    } else if (conflict.minutesUntil > 15 && conflict.minutesUntil <= 30) {
-      newsVerdict = "WARNING";
-      newsMessage = `High-Impact ${conflict.event.title} (${conflict.event.currency}) in ${conflict.minutesUntil}m. High volatility expected.`;
-    } else if (conflict.minutesUntil <= 0) {
-      newsVerdict = "WARNING";
-      newsMessage = `High-Impact ${conflict.event.title} (${conflict.event.currency}) released ${Math.abs(conflict.minutesUntil)}m ago. Post-news spread wider.`;
-    }
-  }
+  const newsVerdict: AuditVerdict = conflict ? "BLOCKED" : "PASS";
+  const newsMessage = conflict
+    ? `Trading paused around ${conflict.event.title} (${conflict.event.currency}).`
+    : "No high-impact event within your configured news buffer.";
 
   // 2. Risk Ceiling & Capacity Check
   const otherActive = activeSetups.filter(
-    (s) => s.id !== setup.id && (s.status === "WAITING_FOR_CONFIRMATION" || s.status === "ENTRY_TRIGGERED")
+    (s) =>
+      s.id !== setup.id &&
+      (s.status === "WAITING_FOR_CONFIRMATION" ||
+        s.status === "ENTRY_TRIGGERED"),
   );
   const currentOpenCount = otherActive.length + 1; // including this one
   const maxOpenSetups = settings.maxOpenSetups;
-  const totalRiskPercent = Number((currentOpenCount * settings.riskPerTradePercent).toFixed(2));
+  const totalRiskPercent = Number(
+    (
+      otherActive.reduce(
+        (sum, item) => sum + (item.riskPercent ?? settings.riskPerTradePercent),
+        0,
+      ) + settings.riskPerTradePercent
+    ).toFixed(2),
+  );
 
   let riskVerdict: AuditVerdict = "PASS";
   let riskMessage = `Portfolio risk capacity OK (${currentOpenCount}/${maxOpenSetups} open positions).`;
@@ -95,7 +101,7 @@ export function evaluatePreTradeAudit(
   // 3. Confluence Verification
   const count = setup.confluenceTags.length;
   let confluenceVerdict: AuditVerdict = "PASS";
-  let confluenceMessage = `${count} institutional confluences validated.`;
+  let confluenceMessage = `${count} confluence tags recorded.`;
 
   if (count < 2) {
     confluenceVerdict = "WARNING";
@@ -106,7 +112,7 @@ export function evaluatePreTradeAudit(
   let overallVerdict: AuditVerdict = "PASS";
   if (newsVerdict === "BLOCKED" || riskVerdict === "BLOCKED") {
     overallVerdict = "BLOCKED";
-  } else if (newsVerdict === "WARNING" || riskVerdict === "WARNING" || confluenceVerdict === "WARNING") {
+  } else if (riskVerdict === "WARNING" || confluenceVerdict === "WARNING") {
     overallVerdict = "WARNING";
   }
 

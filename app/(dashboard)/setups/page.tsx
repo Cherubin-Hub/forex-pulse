@@ -1,3 +1,4 @@
+import { getCalendarSnapshot } from "@/lib/services/calendar";
 import { getActiveSetups } from "@/lib/services/setups";
 import { getQuotes } from "@/lib/services/marketData";
 import { SetupGrid } from "@/components/setups/SetupGrid";
@@ -8,9 +9,10 @@ import { AlertRulesPanel } from "@/components/setups/AlertRulesPanel";
 import { MarketScannerWidget } from "@/components/setups/MarketScannerWidget";
 
 export default async function SetupsPage() {
-  const [setups, quotes] = await Promise.all([
+  const [setups, quotes, calendar] = await Promise.all([
     getActiveSetups(),
     getQuotes(),
+    getCalendarSnapshot(),
   ]);
 
   return (
@@ -25,10 +27,15 @@ export default async function SetupsPage() {
         <div>
           <h2 className="text-2xl font-bold tracking-tight">Active Setups</h2>
           <p className="text-sm text-muted-foreground mt-0.5">
-            Trades waiting for entry confirmation or currently active in the market.
+            Trades waiting for entry confirmation or currently active in the
+            market.
           </p>
         </div>
-        <CreateSetupModal />
+        <CreateSetupModal
+          events={calendar.events}
+          activeSetups={setups}
+          calendarAvailable={calendar.available}
+        />
       </div>
 
       {/* Automated Strategy Scanner Engine */}

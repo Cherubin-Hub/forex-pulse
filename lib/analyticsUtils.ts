@@ -1,3 +1,4 @@
+import { calculateRealizedR } from "@/lib/postMortemUtils";
 import type { TradingSetup } from "@/types/setup";
 
 export interface SetupAnalytics {
@@ -9,7 +10,7 @@ export interface SetupAnalytics {
   winRate: number; // percentage (0 - 100)
   avgRiskReward: number;
   netR: number; // Sum of R-multiples: +R for TP_REACHED, -1R for SL_HIT
-  profitFactor: number;
+  profitFactor: number | null;
 }
 
 export interface TagPerformance {
@@ -21,7 +22,7 @@ export interface TagPerformance {
   winRate: number;
   netR: number;
   expectancyR: number;
-  profitFactor: number;
+  profitFactor: number | null;
 }
 
 export interface DimensionPerformance {
@@ -37,29 +38,37 @@ export interface DimensionPerformance {
 /**
  * Calculates quantitative performance metrics from an array of trading setups.
  */
-export function calculateSetupAnalytics(setups: TradingSetup[]): SetupAnalytics {
+export function calculateSetupAnalytics(
+  setups: TradingSetup[],
+): SetupAnalytics {
   const totalTrades = setups.length;
 
-  const wins = setups.filter((s) => s.status === "TP_REACHED").length;
-  const losses = setups.filter((s) => s.status === "SL_HIT").length;
-  const invalidated = setups.filter((s) => s.status === "INVALIDATED" || s.status === "EXPIRED").length;
+  const wins = setups.filter((s) => calculateRealizedR(s) > 0).length;
+  const losses = setups.filter((s) => calculateRealizedR(s) < 0).length;
+  const invalidated = setups.filter(
+    (s) => s.status === "INVALIDATED" || s.status === "EXPIRED",
+  ).length;
 
-  const completedTrades = wins + losses;
+  const completedTrades = setups.filter(
+    (s) => s.status === "TP_REACHED" || s.status === "SL_HIT",
+  ).length;
   const winRate = completedTrades > 0 ? (wins / completedTrades) * 100 : 0;
 
   const totalRR = setups.reduce((acc, s) => acc + s.riskReward, 0);
   const avgRiskReward = totalTrades > 0 ? totalRR / totalTrades : 0;
 
   const grossProfitR = setups
-    .filter((s) => s.status === "TP_REACHED")
-    .reduce((acc, s) => acc + s.riskReward, 0);
+    .filter((s) => calculateRealizedR(s) > 0)
+    .reduce((acc, s) => acc + calculateRealizedR(s), 0);
 
-  const grossLossR = losses * 1.0;
+  const grossLossR = setups.reduce(
+    (sum, setup) => sum + Math.max(0, -calculateRealizedR(setup)),
+    0,
+  );
   const netR = grossProfitR - grossLossR;
 
-  const profitFactor = grossLossR > 0
-    ? grossProfitR / grossLossR
-    : grossProfitR > 0 ? grossProfitR : 0;
+  const profitFactor =
+    grossLossR > 0 ? grossProfitR / grossLossR : grossProfitR > 0 ? null : 0;
 
   return {
     totalTrades,
@@ -70,45 +79,67 @@ export function calculateSetupAnalytics(setups: TradingSetup[]): SetupAnalytics 
     winRate: Number(winRate.toFixed(1)),
     avgRiskReward: Number(avgRiskReward.toFixed(2)),
     netR: Number(netR.toFixed(1)),
-    profitFactor: Number(profitFactor.toFixed(2)),
+    profitFactor:
+      profitFactor === null ? null : Number(profitFactor.toFixed(2)),
   };
 }
 
 /**
  * Aggregates performance statistics across individual confluence tags.
  */
-export function calculateTagAnalytics(setups: TradingSetup[]): TagPerformance[] {
+export function calculateTagAnalytics(
+  setups: TradingSetup[],
+): TagPerformance[] {
   const tagMap: Record<
     string,
-    { total: number; wins: number; losses: number; grossProfitR: number; grossLossR: number }
+    {
+      total: number;
+      wins: number;
+      losses: number;
+      grossProfitR: number;
+      grossLossR: number;
+      closed: number;
+    }
   > = {};
 
   for (const s of setups) {
     for (const tag of s.confluenceTags) {
       if (!tagMap[tag]) {
-        tagMap[tag] = { total: 0, wins: 0, losses: 0, grossProfitR: 0, grossLossR: 0 };
+        tagMap[tag] = {
+          total: 0,
+          wins: 0,
+          losses: 0,
+          grossProfitR: 0,
+          grossLossR: 0,
+          closed: 0,
+        };
       }
       tagMap[tag].total += 1;
+      if (s.status === "TP_REACHED" || s.status === "SL_HIT")
+        tagMap[tag].closed++;
 
-      if (s.status === "TP_REACHED") {
+      if (calculateRealizedR(s) > 0) {
         tagMap[tag].wins += 1;
-        tagMap[tag].grossProfitR += Number(s.riskReward);
-      } else if (s.status === "SL_HIT") {
+        tagMap[tag].grossProfitR += calculateRealizedR(s);
+      } else if (calculateRealizedR(s) < 0) {
         tagMap[tag].losses += 1;
-        tagMap[tag].grossLossR += 1.0;
+        tagMap[tag].grossLossR += -calculateRealizedR(s);
       }
     }
   }
 
   return Object.entries(tagMap)
     .map(([tag, data]) => {
-      const completed = data.wins + data.losses;
+      const completed = data.closed;
       const winRate = completed > 0 ? (data.wins / completed) * 100 : 0;
       const netR = data.grossProfitR - data.grossLossR;
       const expectancyR = completed > 0 ? netR / completed : 0;
-      const profitFactor = data.grossLossR > 0
-        ? data.grossProfitR / data.grossLossR
-        : data.grossProfitR > 0 ? data.grossProfitR : 0;
+      const profitFactor =
+        data.grossLossR > 0
+          ? data.grossProfitR / data.grossLossR
+          : data.grossProfitR > 0
+            ? null
+            : 0;
 
       return {
         tag,
@@ -119,7 +150,8 @@ export function calculateTagAnalytics(setups: TradingSetup[]): TagPerformance[] 
         winRate: Number(winRate.toFixed(1)),
         netR: Number(netR.toFixed(1)),
         expectancyR: Number(expectancyR.toFixed(2)),
-        profitFactor: Number(profitFactor.toFixed(2)),
+        profitFactor:
+          profitFactor === null ? null : Number(profitFactor.toFixed(2)),
       };
     })
     .sort((a, b) => b.netR - a.netR);
@@ -130,29 +162,48 @@ export function calculateTagAnalytics(setups: TradingSetup[]): TagPerformance[] 
  */
 export function calculateDimensionAnalytics(
   setups: TradingSetup[],
-  dimension: "DIRECTION" | "SYMBOL"
+  dimension: "DIRECTION" | "SYMBOL",
 ): DimensionPerformance[] {
-  const groups: Record<string, { total: number; wins: number; losses: number; grossProfitR: number; grossLossR: number }> = {};
+  const groups: Record<
+    string,
+    {
+      total: number;
+      wins: number;
+      losses: number;
+      grossProfitR: number;
+      grossLossR: number;
+      closed: number;
+    }
+  > = {};
 
   for (const s of setups) {
     const key = dimension === "DIRECTION" ? s.direction : s.symbol;
     if (!groups[key]) {
-      groups[key] = { total: 0, wins: 0, losses: 0, grossProfitR: 0, grossLossR: 0 };
+      groups[key] = {
+        total: 0,
+        wins: 0,
+        losses: 0,
+        grossProfitR: 0,
+        grossLossR: 0,
+        closed: 0,
+      };
     }
 
     groups[key].total += 1;
-    if (s.status === "TP_REACHED") {
+    if (s.status === "TP_REACHED" || s.status === "SL_HIT")
+      groups[key].closed++;
+    if (calculateRealizedR(s) > 0) {
       groups[key].wins += 1;
-      groups[key].grossProfitR += Number(s.riskReward);
-    } else if (s.status === "SL_HIT") {
+      groups[key].grossProfitR += calculateRealizedR(s);
+    } else if (calculateRealizedR(s) < 0) {
       groups[key].losses += 1;
-      groups[key].grossLossR += 1.0;
+      groups[key].grossLossR += -calculateRealizedR(s);
     }
   }
 
   return Object.entries(groups)
     .map(([key, data]) => {
-      const completed = data.wins + data.losses;
+      const completed = data.closed;
       const winRate = completed > 0 ? (data.wins / completed) * 100 : 0;
       const netR = data.grossProfitR - data.grossLossR;
 

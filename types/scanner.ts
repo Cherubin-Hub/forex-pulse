@@ -29,13 +29,14 @@ export type ScannedOpportunity = {
 };
 
 export type ScannerFilterConfig = {
-  minConfluenceScore: number;     // e.g., 60 for SCALPER, 70 for DAY_TRADER, 75 for SWING_TRADER
-  minRiskReward: number;           // e.g., 1.5 for SCALPER, 2.0 for DAY_TRADER, 2.5 for SWING_TRADER
-  enableNewsFilter: boolean;       // News Gatekeeper: avoid setups near high-impact events
-  autoCommit: boolean;             // Auto-save to Supabase without manual approval
-  mode: "MANUAL" | "AUTOMATIC";    // Mode switch: Manual on-demand vs Automatic continuous
-  scanIntervalSeconds: number;     // Continuous loop interval in seconds (default: 15s)
-  traderProfile?: TraderProfile;   // SCALPER | DAY_TRADER | SWING_TRADER
+  newsWindows?: { preReleaseMinutes: number; postReleaseMinutes: number };
+  minConfluenceScore: number; // e.g., 60 for SCALPER, 70 for DAY_TRADER, 75 for SWING_TRADER
+  minRiskReward: number; // e.g., 1.5 for SCALPER, 2.0 for DAY_TRADER, 2.5 for SWING_TRADER
+  enableNewsFilter: boolean; // News Gatekeeper: avoid setups near high-impact events
+  autoCommit: boolean; // Auto-save to Supabase without manual approval
+  mode: "MANUAL" | "AUTOMATIC"; // Mode switch: Manual on-demand vs Automatic continuous
+  scanIntervalSeconds: number; // Continuous loop interval in seconds (default: 15s)
+  traderProfile?: TraderProfile; // SCALPER | DAY_TRADER | SWING_TRADER
   pollingIntervalMinutes?: number; // Legacy compatibility
 };
 

@@ -1,4 +1,9 @@
-import type { TechnicalAnalysis, ConfluenceScore, PivotLevels, TrendDirection } from "@/types/technical";
+import type {
+  TechnicalAnalysis,
+  ConfluenceScore,
+  PivotLevels,
+  TrendDirection,
+} from "@/types/technical";
 import type { PriceQuote } from "@/types/market";
 import type { TraderProfile } from "@/lib/schemas/settings";
 import { INSTRUMENTS } from "@/lib/constants/instruments";
@@ -11,14 +16,14 @@ import { INSTRUMENTS } from "@/lib/constants/instruments";
  */
 export function calculateConfluenceScore(
   tech: TechnicalAnalysis,
-  profile: TraderProfile = "DAY_TRADER"
+  profile: TraderProfile = "DAY_TRADER",
 ): ConfluenceScore {
   let weights: Record<"D1" | "H4" | "H1" | "M15", number>;
   let minThreshold = 0.52;
 
   switch (profile) {
     case "SCALPER":
-      weights = { M15: 0.50, H1: 0.35, H4: 0.15, D1: 0.00 };
+      weights = { M15: 0.5, H1: 0.35, H4: 0.15, D1: 0.0 };
       minThreshold = 0.48;
       break;
     case "SWING_TRADER":
@@ -27,7 +32,7 @@ export function calculateConfluenceScore(
       break;
     case "DAY_TRADER":
     default:
-      weights = { H1: 0.40, H4: 0.35, M15: 0.15, D1: 0.10 };
+      weights = { H1: 0.4, H4: 0.35, M15: 0.15, D1: 0.1 };
       minThreshold = 0.52;
       break;
   }
@@ -57,21 +62,39 @@ export function calculateConfluenceScore(
     dominantTrend = "BULLISH";
     scorePercent = Math.round(bullishWeight * 100);
     if (profile === "SCALPER") {
-      alignmentLabel = scorePercent >= 75 ? "Strong Scalp Momentum" : "M15 Scalp Pullback Setup";
+      alignmentLabel =
+        scorePercent >= 75
+          ? "Strong Scalp Momentum"
+          : "M15 Scalp Pullback Setup";
     } else if (profile === "SWING_TRADER") {
-      alignmentLabel = scorePercent >= 80 ? "Macro Swing Bullish Trend" : "Multi-Day Retracement Active";
+      alignmentLabel =
+        scorePercent >= 80
+          ? "Macro Swing Bullish Trend"
+          : "Multi-Day Retracement Active";
     } else {
-      alignmentLabel = scorePercent >= 80 ? "Strong Bullish Alignment" : "Bullish Trend (Pullback Active)";
+      alignmentLabel =
+        scorePercent >= 80
+          ? "Strong Bullish Alignment"
+          : "Bullish Trend (Pullback Active)";
     }
   } else if (bearishWeight > bullishWeight && bearishWeight >= minThreshold) {
     dominantTrend = "BEARISH";
     scorePercent = Math.round(bearishWeight * 100);
     if (profile === "SCALPER") {
-      alignmentLabel = scorePercent >= 75 ? "Strong Bearish Scalp Momentum" : "M15 Scalp Pullback Setup";
+      alignmentLabel =
+        scorePercent >= 75
+          ? "Strong Bearish Scalp Momentum"
+          : "M15 Scalp Pullback Setup";
     } else if (profile === "SWING_TRADER") {
-      alignmentLabel = scorePercent >= 80 ? "Macro Swing Bearish Trend" : "Multi-Day Retracement Active";
+      alignmentLabel =
+        scorePercent >= 80
+          ? "Macro Swing Bearish Trend"
+          : "Multi-Day Retracement Active";
     } else {
-      alignmentLabel = scorePercent >= 80 ? "Strong Bearish Alignment" : "Bearish Trend (Pullback Active)";
+      alignmentLabel =
+        scorePercent >= 80
+          ? "Strong Bearish Alignment"
+          : "Bearish Trend (Pullback Active)";
     }
   }
 
@@ -85,16 +108,30 @@ export function calculateConfluenceScore(
 /**
  * Calculates standard Floor Trader Pivot levels and ATR-based volatility envelope.
  */
-export function calculateDailyPivots(quote: PriceQuote, atrPips: number): PivotLevels {
+export function calculateDailyPivots(
+  quote: PriceQuote,
+  atrPips: number,
+): PivotLevels | null {
   const symbol = quote.symbol;
   const isGold = symbol === "XAUUSD";
   const isJpy = symbol.includes("JPY");
   const pipMultiplier = isGold ? 0.1 : isJpy ? 0.01 : 0.0001;
 
-  // Hydration-safe fallback handling for nullable quote metrics
-  const close = quote.price ?? quote.previousClose ?? (isGold ? 2650 : isJpy ? 150 : 1.1);
-  const high = quote.high ?? (close > 0 ? close * 1.004 : 1.0);
-  const low = quote.low ?? (close > 0 ? close * 0.996 : 1.0);
+  const close = quote.previousClose,
+    high = quote.previousHigh,
+    low = quote.previousLow;
+  if (
+    close === null ||
+    high === null ||
+    high === undefined ||
+    low === null ||
+    low === undefined ||
+    ![close, high, low, atrPips].every(Number.isFinite) ||
+    low <= 0 ||
+    high < low ||
+    atrPips <= 0
+  )
+    return null;
 
   // Standard Floor Trader Pivots
   const pivot = (high + low + close) / 3;

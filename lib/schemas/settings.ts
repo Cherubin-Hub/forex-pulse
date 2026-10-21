@@ -1,11 +1,24 @@
 import { z } from "zod";
 
-export const TRADER_PROFILE_VALUES = ["SCALPER", "DAY_TRADER", "SWING_TRADER"] as const;
-export const NEWS_SENSITIVITY_VALUES = ["AGGRESSIVE", "BALANCED", "CONSERVATIVE"] as const;
+export const TRADER_PROFILE_VALUES = [
+  "SCALPER",
+  "DAY_TRADER",
+  "SWING_TRADER",
+] as const;
+export const NEWS_SENSITIVITY_VALUES = [
+  "AGGRESSIVE",
+  "BALANCED",
+  "CONSERVATIVE",
+] as const;
 export const SESSION_ID_VALUES = ["ASIAN", "LONDON", "NEW_YORK"] as const;
 
 export const settingsSchema = z.object({
   traderProfile: z.enum(TRADER_PROFILE_VALUES),
+  accountBalance: z.number().finite().positive().max(1_000_000_000),
+  leverage: z.number().int().min(1).max(1000),
+  maxDailyLossR: z.number().min(0.1).max(20),
+  automationEnabled: z.boolean(),
+  manualLockoutUntil: z.string().datetime({ offset: true }).nullable(),
 
   riskPerTradePercent: z
     .number("Enter a number")

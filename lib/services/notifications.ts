@@ -1,5 +1,5 @@
 import type { SystemNotification } from "@/types/notification";
-import { createServerSupabaseClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { mapRowToNotification } from "@/lib/supabase/mappers";
 import { getAuthenticatedUserId } from "@/lib/auth/user";
 
@@ -10,14 +10,13 @@ import { getAuthenticatedUserId } from "@/lib/auth/user";
 export async function getNotifications(): Promise<SystemNotification[]> {
   try {
     const userId = await getAuthenticatedUserId();
-    const supabase = await createServerSupabaseClient();
+    if (!userId) return [];
+    const supabase = createAdminClient();
 
-    let query = supabase.from("notifications").select("*");
-    if (userId) {
-      query = query.or(`user_id.eq.${userId},user_id.is.null`);
-    } else {
-      query = query.is("user_id", null);
-    }
+    const query = supabase
+      .from("notifications")
+      .select("*")
+      .eq("user_id", userId);
 
     const { data, error } = await query
       .order("created_at", { ascending: false })
@@ -34,7 +33,7 @@ export async function getNotifications(): Promise<SystemNotification[]> {
   } catch (err) {
     console.warn(
       "Supabase client unavailable for notifications:",
-      err instanceof Error ? err.message : err
+      err instanceof Error ? err.message : err,
     );
     return [];
   }
@@ -44,14 +43,16 @@ export async function getNotifications(): Promise<SystemNotification[]> {
  * Creates and persists a new system notification in Supabase.
  */
 export async function createNotification(
-  notification: Omit<SystemNotification, "id" | "timestamp">
+  notification: Omit<SystemNotification, "id" | "timestamp">,
 ): Promise<{ success: boolean; id?: string; error?: string }> {
   try {
-    const supabase = await createServerSupabaseClient();
+    const userId = await getAuthenticatedUserId();
+    if (!userId) return { success: false, error: "Unauthorized" };
+    const supabase = createAdminClient();
     const { data, error } = await supabase
       .from("notifications")
       .insert({
-        user_id: notification.userId ?? null,
+        user_id: userId,
         type: notification.type,
         priority: notification.priority,
         title: notification.title,
@@ -72,7 +73,8 @@ export async function createNotification(
   } catch (err) {
     return {
       success: false,
-      error: err instanceof Error ? err.message : "Failed to create notification",
+      error:
+        err instanceof Error ? err.message : "Failed to create notification",
     };
   }
 }

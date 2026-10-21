@@ -1,3 +1,5 @@
+import { calculateRealizedR } from "@/lib/postMortemUtils";
+import { formatDayLabelPHT } from "@/lib/formatters";
 import type { TradingSetup } from "@/types/setup";
 
 export type CumulativeRPoint = {
@@ -11,21 +13,27 @@ export type CumulativeRPoint = {
 /**
  * Computes running cumulative R-multiple performance points across resolved trades.
  */
-export function calculateCumulativeRCurve(setups: TradingSetup[]): CumulativeRPoint[] {
+export function calculateCumulativeRCurve(
+  setups: TradingSetup[],
+): CumulativeRPoint[] {
   // 1. Filter to completed trades (Wins & Losses) and sort chronologically
   const completed = setups
     .filter((s) => s.status === "TP_REACHED" || s.status === "SL_HIT")
-    .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+    .sort(
+      (a, b) =>
+        Date.parse(a.closedAt ?? a.updatedAt) -
+        Date.parse(b.closedAt ?? b.updatedAt),
+    );
 
   let runningR = 0;
   return completed.map((s, index) => {
-    const rReturn = s.status === "TP_REACHED" ? Number(s.riskReward) : -1.0;
+    const rReturn = calculateRealizedR(s);
     runningR = Number((runningR + rReturn).toFixed(2));
 
     return {
       tradeIndex: index + 1,
       symbol: s.symbol,
-      date: new Date(s.createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric" }),
+      date: formatDayLabelPHT(s.closedAt ?? s.updatedAt),
       rReturn,
       cumulativeR: runningR,
     };
@@ -53,7 +61,11 @@ export function exportSetupsToCSV(setups: TradingSetup[]): void {
 
   const escapeCSV = (str: string | number | null | undefined) => {
     if (str === null || str === undefined) return '""';
-    const clean = String(str).replace(/"/g, '""');
+    const text = String(str);
+    const clean = (/^[=+@\-\t\r]/.test(text) ? "'" + text : text).replace(
+      /"/g,
+      '""',
+    );
     return `"${clean}"`;
   };
 
@@ -72,7 +84,9 @@ export function exportSetupsToCSV(setups: TradingSetup[]): void {
     escapeCSV(s.notes),
   ]);
 
-  const csvContent = [headers.join(","), ...rows.map((r) => r.join(","))].join("\r\n");
+  const csvContent = [headers.join(","), ...rows.map((r) => r.join(","))].join(
+    "\r\n",
+  );
 
   const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
   const url = URL.createObjectURL(blob);

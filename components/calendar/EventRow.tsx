@@ -1,8 +1,12 @@
 "use client";
 
 import type { EconomicEvent } from "@/types/calendar";
-import { getAffectedInstruments, getEventTiming, getMsUntilEvent, getEventSurprise } from "@/lib/calendar";
-import { resolveEventActual } from "@/lib/mock/events";
+import {
+  getAffectedInstruments,
+  getEventTiming,
+  getMsUntilEvent,
+  getEventSurprise,
+} from "@/lib/calendar";
 import { formatClockPHT, formatDuration } from "@/lib/formatters";
 import { ImpactBadge } from "@/components/calendar/ImpactBadge";
 import { cn } from "@/lib/utils";
@@ -21,11 +25,7 @@ export function EventRow({ event, now, showAffected = false }: EventRowProps) {
   const msUntil = getMsUntilEvent(event, now);
   const affected = showAffected ? getAffectedInstruments(event.currency) : [];
 
-  // Guarantee resolved actual if timing is RELEASED or JUST_RELEASED
-  const resolvedEvent =
-    timing === "RELEASED" || timing === "JUST_RELEASED"
-      ? resolveEventActual(event, now)
-      : event;
+  const resolvedEvent = event;
 
   const surpriseInfo = getEventSurprise(resolvedEvent);
 
@@ -35,7 +35,7 @@ export function EventRow({ event, now, showAffected = false }: EventRowProps) {
         "flex items-start gap-3 rounded-lg px-3 py-2.5 transition-colors",
         timing === "IMMINENT" && "bg-rose-500/10",
         timing === "JUST_RELEASED" && "bg-amber-500/10",
-        timing === "RELEASED" && "opacity-60 hover:opacity-100"
+        timing === "RELEASED" && "opacity-60 hover:opacity-100",
       )}
     >
       {/* Time */}
@@ -58,11 +58,18 @@ export function EventRow({ event, now, showAffected = false }: EventRowProps) {
           <span className="flex items-center gap-1">
             <span>Actual:</span>
             {resolvedEvent.actual && resolvedEvent.actual !== "—" ? (
-              <span className={cn("font-semibold font-mono", surpriseInfo.colorClass)}>
+              <span
+                className={cn(
+                  "font-semibold font-mono",
+                  surpriseInfo.colorClass,
+                )}
+              >
                 {resolvedEvent.actual}
               </span>
             ) : timing === "UPCOMING" || timing === "IMMINENT" ? (
-              <span className="text-muted-foreground/60 italic text-[11px]">Pending</span>
+              <span className="text-muted-foreground/60 italic text-[11px]">
+                Pending
+              </span>
             ) : (
               <span className="font-medium text-foreground">—</span>
             )}
@@ -77,7 +84,7 @@ export function EventRow({ event, now, showAffected = false }: EventRowProps) {
                     surpriseInfo.isBeat &&
                       "bg-emerald-500/15 text-emerald-500 border-emerald-500/30 font-bold",
                     surpriseInfo.isMiss &&
-                      "bg-rose-500/15 text-rose-500 border-rose-500/30 font-bold"
+                      "bg-rose-500/15 text-rose-500 border-rose-500/30 font-bold",
                   )}
                 >
                   {surpriseInfo.badgeLabel}
@@ -105,15 +112,25 @@ export function EventRow({ event, now, showAffected = false }: EventRowProps) {
 
       {/* Countdown / status */}
       <div className="shrink-0 text-right text-xs font-medium tabular-nums">
-        {timing === "UPCOMING" && <span className="text-muted-foreground font-mono">in {formatDuration(msUntil)}</span>}
-        {timing === "IMMINENT" && <span className="text-rose-600 dark:text-rose-400 font-bold font-mono">in {formatDuration(msUntil)}</span>}
+        {timing === "UPCOMING" && (
+          <span className="text-muted-foreground font-mono">
+            in {formatDuration(msUntil)}
+          </span>
+        )}
+        {timing === "IMMINENT" && (
+          <span className="text-rose-600 dark:text-rose-400 font-bold font-mono">
+            in {formatDuration(msUntil)}
+          </span>
+        )}
         {timing === "JUST_RELEASED" && (
           <span className="inline-flex items-center gap-1 text-amber-500 font-semibold animate-pulse">
             <span className="h-1.5 w-1.5 rounded-full bg-amber-500" />
             Just released
           </span>
         )}
-        {timing === "RELEASED" && <span className="text-muted-foreground">Released</span>}
+        {timing === "RELEASED" && (
+          <span className="text-muted-foreground">Released</span>
+        )}
       </div>
     </div>
   );

@@ -1,6 +1,9 @@
 "use client";
 
 import { useState, useEffect, useMemo } from "react";
+import { useLiveMarket } from "@/components/providers/AutoTradeAutomationProvider";
+import { isVerifiedQuote } from "@/lib/marketQuality";
+import { formatPrice } from "@/lib/formatters";
 import { Calculator } from "lucide-react";
 import { useSettings } from "@/components/providers/SettingsProvider";
 import { Input } from "@/components/ui/input";
@@ -12,13 +15,14 @@ import { calculatePositionSize, type CalculationMode } from "@/lib/riskUtils";
 export function AdvancedPositionCalculator() {
   const { settings, isLoaded } = useSettings();
 
-  const [balance, setBalance] = useState<number>(10000);
+  const balance = settings.accountBalance;
+  const { getQuote } = useLiveMarket();
   const [riskPercent, setRiskPercent] = useState<number>(1);
   const [pair, setPair] = useState("EURUSD");
   const [mode, setMode] = useState<CalculationMode>("PIPS");
   const [slPips, setSlPips] = useState<number>(20);
-  const [entryPrice, setEntryPrice] = useState<number>(1.1250);
-  const [stopLossPrice, setStopLossPrice] = useState<number>(1.1230);
+  const [entryPrice, setEntryPrice] = useState<number>(0);
+  const [stopLossPrice, setStopLossPrice] = useState<number>(0);
 
   // Sync default risk percentage from user settings
   useEffect(() => {
@@ -37,11 +41,27 @@ export function AdvancedPositionCalculator() {
       slPips,
       entryPrice,
       stopLossPrice,
+      leverage: settings.leverage,
+      marketPrice: isVerifiedQuote(getQuote(pair))
+        ? (getQuote(pair)!.price ?? 0)
+        : 0,
     });
-  }, [balance, riskPercent, pair, mode, slPips, entryPrice, stopLossPrice]);
+  }, [
+    balance,
+    riskPercent,
+    pair,
+    mode,
+    slPips,
+    entryPrice,
+    stopLossPrice,
+    settings.leverage,
+    getQuote,
+  ]);
 
   if (!isLoaded) {
-    return <div className="h-[480px] animate-pulse rounded-xl bg-card/50 border border-border" />;
+    return (
+      <div className="h-[480px] animate-pulse rounded-xl bg-card/50 border border-border" />
+    );
   }
 
   const QUICK_RISKS = [0.5, 1.0, 1.5, 2.0];
@@ -52,7 +72,9 @@ export function AdvancedPositionCalculator() {
       <div className="flex items-center justify-between border-b border-border bg-muted/30 p-4">
         <div className="flex items-center gap-2">
           <Calculator className="h-5 w-5 text-primary" />
-          <h3 className="font-semibold text-sm">Institutional Position Sizer</h3>
+          <h3 className="font-semibold text-sm">
+            Institutional Position Sizer
+          </h3>
         </div>
 
         {/* Mode Selector */}
@@ -60,7 +82,9 @@ export function AdvancedPositionCalculator() {
           <button
             type="button"
             className={`px-2.5 py-1 text-xs font-semibold rounded-md transition-colors ${
-              mode === "PIPS" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"
+              mode === "PIPS"
+                ? "bg-primary text-primary-foreground"
+                : "text-muted-foreground hover:text-foreground"
             }`}
             onClick={() => setMode("PIPS")}
           >
@@ -69,7 +93,9 @@ export function AdvancedPositionCalculator() {
           <button
             type="button"
             className={`px-2.5 py-1 text-xs font-semibold rounded-md transition-colors ${
-              mode === "PRICE" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"
+              mode === "PRICE"
+                ? "bg-primary text-primary-foreground"
+                : "text-muted-foreground hover:text-foreground"
             }`}
             onClick={() => setMode("PRICE")}
           >
@@ -86,7 +112,8 @@ export function AdvancedPositionCalculator() {
             <Input
               type="number"
               value={balance || ""}
-              onChange={(e) => setBalance(Number(e.target.value))}
+              readOnly
+              title="Set your USD account balance in Settings"
               className="font-mono text-sm"
             />
           </div>
@@ -95,7 +122,9 @@ export function AdvancedPositionCalculator() {
           <div className="space-y-2">
             <div className="flex items-center justify-between">
               <Label className="text-xs">Risk Per Trade (%)</Label>
-              <span className="text-xs font-mono font-semibold text-primary">{riskPercent}%</span>
+              <span className="text-xs font-mono font-semibold text-primary">
+                {riskPercent}%
+              </span>
             </div>
             <div className="grid grid-cols-4 gap-2">
               {QUICK_RISKS.map((preset) => (
@@ -169,6 +198,11 @@ export function AdvancedPositionCalculator() {
         {/* Calculated Results Panel */}
         <div className="flex flex-col justify-between rounded-xl border border-border/80 bg-muted/20 p-5 space-y-4">
           <div>
+            {sizing.error && (
+              <p role="alert" className="mb-3 text-xs text-amber-500">
+                {sizing.error}
+              </p>
+            )}
             <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
               Recommended Position Size
             </span>
@@ -176,7 +210,9 @@ export function AdvancedPositionCalculator() {
               <span className="text-3xl font-extrabold font-mono text-primary">
                 {sizing.lotSize}
               </span>
-              <span className="text-sm font-semibold text-muted-foreground">Standard Lots</span>
+              <span className="text-sm font-semibold text-muted-foreground">
+                Standard Lots
+              </span>
             </div>
           </div>
 
@@ -185,37 +221,65 @@ export function AdvancedPositionCalculator() {
             <div>
               <p className="text-[11px] text-muted-foreground">Cash at Risk</p>
               <p className="text-sm font-bold font-mono text-rose-500">
-                ${sizing.riskAmount.toFixed(2)} ({riskPercent}%)
+                ${formatPrice(sizing.actualRiskAmount, 2)} ({riskPercent}%)
               </p>
             </div>
             <div>
-              <p className="text-[11px] text-muted-foreground">Effective SL Distance</p>
-              <p className="text-sm font-bold font-mono">{sizing.effectiveSlPips} pips</p>
+              <p className="text-[11px] text-muted-foreground">
+                Effective SL Distance
+              </p>
+              <p className="text-sm font-bold font-mono">
+                {sizing.effectiveSlPips} pips
+              </p>
             </div>
             <div>
-              <p className="text-[11px] text-muted-foreground">Contract Units</p>
-              <p className="text-sm font-bold font-mono">{sizing.units.toLocaleString()} units</p>
+              <p className="text-[11px] text-muted-foreground">
+                Contract Units
+              </p>
+              <p className="text-sm font-bold font-mono">
+                {sizing.units.toLocaleString()} units
+              </p>
             </div>
             <div>
-              <p className="text-[11px] text-muted-foreground">Mini / Micro Lots</p>
-              <p className="text-sm font-bold font-mono">{sizing.miniLots} mini / {sizing.microLots} micro</p>
+              <p className="text-[11px] text-muted-foreground">
+                Mini / Micro Lots
+              </p>
+              <p className="text-sm font-bold font-mono">
+                {sizing.miniLots} mini / {sizing.microLots} micro
+              </p>
             </div>
             <div>
-              <p className="text-[11px] text-muted-foreground">Est. Margin (1:100)</p>
-              <p className="text-sm font-bold font-mono">${sizing.estimatedMargin.toLocaleString()}</p>
+              <p className="text-[11px] text-muted-foreground">
+                Est. Margin (1:{settings.leverage})
+              </p>
+              <p className="text-sm font-bold font-mono">
+                ${sizing.estimatedMargin.toLocaleString()}
+              </p>
             </div>
             <div>
-              <p className="text-[11px] text-muted-foreground">Pip Value (Per Lot)</p>
-              <p className="text-sm font-bold font-mono">${sizing.pipValuePerLot.toFixed(2)}/pip</p>
+              <p className="text-[11px] text-muted-foreground">
+                Pip Value (Per Lot)
+              </p>
+              <p className="text-sm font-bold font-mono">
+                ${formatPrice(sizing.pipValuePerLot, 2)}/pip
+              </p>
             </div>
           </div>
 
           {/* Profit Target Projections */}
           <div className="rounded-lg border border-border bg-background/60 p-3 text-xs space-y-1">
-            <p className="font-semibold text-muted-foreground">Reward Targets Projection:</p>
+            <p className="font-semibold text-muted-foreground">
+              Reward Targets Projection:
+            </p>
             <div className="flex items-center justify-between font-mono pt-1 text-[11px]">
-              <span className="text-emerald-500 font-medium">Target 1 (1:2 R:R): +${(sizing.riskAmount * 2).toFixed(2)}</span>
-              <span className="text-emerald-600 dark:text-emerald-400 font-medium">Target 2 (1:3 R:R): +${(sizing.riskAmount * 3).toFixed(2)}</span>
+              <span className="text-emerald-500 font-medium">
+                Target 1 (1:2 R:R): +$
+                {formatPrice(sizing.actualRiskAmount * 2, 2)}
+              </span>
+              <span className="text-emerald-600 dark:text-emerald-400 font-medium">
+                Target 2 (1:3 R:R): +$
+                {formatPrice(sizing.actualRiskAmount * 3, 2)}
+              </span>
             </div>
           </div>
         </div>

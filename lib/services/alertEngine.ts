@@ -1,20 +1,27 @@
 import type { PriceAlert, FiredAlertResult } from "@/types/alert";
 import type { PriceQuote } from "@/types/market";
 import type { TradingSetup } from "@/types/setup";
-import { calculatePendingTradeProximity, calculateActiveTradeMetrics } from "@/lib/tradeProgressUtils";
+import { isVerifiedQuote } from "@/lib/marketQuality";
+import {
+  calculatePendingTradeProximity,
+  calculateActiveTradeMetrics,
+} from "@/lib/tradeProgressUtils";
 
 const ALERTS_STORAGE_KEY = "fp_price_alerts_v1";
 
 /**
  * Loads user alerts from LocalStorage (with SSR hydration safety).
  */
-export function getSavedAlerts(): PriceAlert[] {
-  if (typeof window === "undefined") return [];
+export function getSavedAlerts(userId?: string): PriceAlert[] {
+  if (!userId || typeof window === "undefined") return [];
   try {
-    const raw = localStorage.getItem(ALERTS_STORAGE_KEY);
+    const raw = localStorage.getItem(`${ALERTS_STORAGE_KEY}:${userId}`);
     return raw ? (JSON.parse(raw) as PriceAlert[]) : [];
   } catch (err) {
-    console.error("[AlertEngine] Failed to read alerts from localStorage:", err);
+    console.error(
+      "[AlertEngine] Failed to read alerts from localStorage:",
+      err,
+    );
     return [];
   }
 }
@@ -22,10 +29,13 @@ export function getSavedAlerts(): PriceAlert[] {
 /**
  * Persists user alerts to LocalStorage.
  */
-export function saveAlerts(alerts: PriceAlert[]): void {
-  if (typeof window === "undefined") return;
+export function saveAlerts(alerts: PriceAlert[], userId?: string): void {
+  if (!userId || typeof window === "undefined") return;
   try {
-    localStorage.setItem(ALERTS_STORAGE_KEY, JSON.stringify(alerts));
+    localStorage.setItem(
+      `${ALERTS_STORAGE_KEY}:${userId}`,
+      JSON.stringify(alerts),
+    );
   } catch (err) {
     console.error("[AlertEngine] Failed to save alerts to localStorage:", err);
   }
@@ -38,7 +48,7 @@ export function saveAlerts(alerts: PriceAlert[]): void {
 export function evaluateSignalsAndAlerts(
   alerts: PriceAlert[],
   quotes: PriceQuote[],
-  setups: TradingSetup[]
+  setups: TradingSetup[],
 ): {
   firedResults: FiredAlertResult[];
   updatedAlerts: PriceAlert[];
@@ -48,7 +58,7 @@ export function evaluateSignalsAndAlerts(
     if (alert.status !== "ACTIVE") return alert;
 
     const quote = quotes.find((q) => q.symbol === alert.symbol);
-    if (!quote || quote.price === null) return alert;
+    if (!isVerifiedQuote(quote)) return alert;
 
     const currentPrice = quote.price;
     let isFired = false;

@@ -1,13 +1,11 @@
 "use client";
 
-import { useState, useEffect, useMemo, useCallback } from "react";
+import { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import type { SystemNotification } from "@/types/notification";
 import type { EconomicEvent } from "@/types/calendar";
 import type { TradingSetup } from "@/types/setup";
-import type { Database } from "@/types/database";
 import { useNow } from "@/hooks/useNow";
-import { createClient } from "@/lib/supabase/client";
-import { mapRowToNotification } from "@/lib/supabase/mappers";
+import { useSettings } from "@/hooks/useSettings";
 import {
   generateSystemNotifications,
   getOfflineReadIds,
@@ -21,6 +19,7 @@ import {
   sendDesktopNotification,
 } from "@/lib/browserNotifications";
 import {
+  fetchNotificationsAction,
   markNotificationReadAction,
   markAllNotificationsReadAction,
 } from "@/app/actions/notificationActions";
@@ -39,8 +38,14 @@ export function useNotifications({
   setups = [],
 }: UseNotificationsProps) {
   const now = useNow();
-  const [realtimeNotifications, setRealtimeNotifications] = useState<SystemNotification[]>([]);
-  const [deletedIds, setDeletedIds] = useState<Set<string>>(new Set<string>());
+  const { identity } = useSettings();
+  const userId = identity?.userId;
+  const knownIds = useRef(
+    new Set(initialNotifications.map((notification) => notification.id)),
+  );
+  const [realtimeNotifications, setRealtimeNotifications] = useState<
+    SystemNotification[] | null
+  >(null);
   const [readIds, setReadIds] = useState<Set<string>>(new Set<string>());
   const [isSoundEnabled, setIsSoundEnabled] = useState<boolean>(true);
   const [desktopPermission, setDesktopPermission] =
@@ -49,83 +54,63 @@ export function useNotifications({
   // Hydration sync: safely read LocalStorage preferences on client mount
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- Hydration match pattern
-    setReadIds(getOfflineReadIds());
+    setReadIds(getOfflineReadIds(userId));
 
-    const savedSound = localStorage.getItem(SOUND_PREF_KEY);
-    if (savedSound !== null) {
-      setIsSoundEnabled(savedSound === "true");
+    try {
+      const savedSound = localStorage.getItem(`${SOUND_PREF_KEY}:${userId}`);
+      if (savedSound !== null) setIsSoundEnabled(savedSound === "true");
+    } catch {
+      /* Browser storage is optional. */
     }
 
     setDesktopPermission(getDesktopNotificationPermission());
-  }, []);
+  }, [userId]);
 
   // Merge initial server-fetched notifications with realtime updates
-  const persistedNotifications = useMemo(() => {
-    const map = new Map<string, SystemNotification>();
-    initialNotifications.forEach((n) => map.set(n.id, n));
-    realtimeNotifications.forEach((n) => map.set(n.id, n));
-    return Array.from(map.values()).filter((n) => !deletedIds.has(n.id));
-  }, [initialNotifications, realtimeNotifications, deletedIds]);
-
-  // Supabase Realtime Subscription Channel
+  const persistedNotifications = realtimeNotifications ?? initialNotifications;
   useEffect(() => {
-    let supabase: ReturnType<typeof createClient> | null = null;
-    try {
-      supabase = createClient();
-    } catch (err) {
-      console.debug("[Realtime] Supabase client unavailable, skipping realtime push:", err);
-      return;
-    }
-
-    const channel = supabase
-      .channel("realtime:notifications")
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "notifications" },
-        (payload) => {
-          if (payload.eventType === "INSERT") {
-            const newRow = payload.new as Database["public"]["Tables"]["notifications"]["Row"];
-            const newNotif = mapRowToNotification(newRow);
-            setRealtimeNotifications((prev) => [
-              newNotif,
-              ...prev.filter((n) => n.id !== newNotif.id),
-            ]);
-
-            if (isSoundEnabled) {
-              playNotificationSound(newNotif.priority);
-            }
-
-            if (desktopPermission === "granted") {
-              sendDesktopNotification(newNotif.title, {
-                body: newNotif.message,
+    if (!userId) return;
+    let cancelled = false,
+      busy = false;
+    const refresh = async () => {
+      if (busy || document.hidden) return;
+      busy = true;
+      try {
+        const next = await fetchNotificationsAction();
+        if (cancelled) return;
+        for (const notification of next) {
+          if (!knownIds.current.has(notification.id)) {
+            if (isSoundEnabled) playNotificationSound(notification.priority);
+            if (desktopPermission === "granted")
+              sendDesktopNotification(notification.title, {
+                body: notification.message,
               });
-            }
-          } else if (payload.eventType === "UPDATE") {
-            const updatedRow = payload.new as Database["public"]["Tables"]["notifications"]["Row"];
-            const updated = mapRowToNotification(updatedRow);
-            setRealtimeNotifications((prev) => [
-              updated,
-              ...prev.filter((n) => n.id !== updated.id),
-            ]);
-          } else if (payload.eventType === "DELETE") {
-            const deletedId = (payload.old as { id?: string })?.id;
-            if (deletedId) {
-              setDeletedIds((prev) => new Set<string>(prev).add(deletedId));
-            }
           }
         }
-      )
-      .subscribe();
-
-    return () => {
-      supabase?.removeChannel(channel);
+        knownIds.current = new Set(next.map((notification) => notification.id));
+        setRealtimeNotifications(next);
+      } finally {
+        busy = false;
+      }
     };
-  }, [isSoundEnabled, desktopPermission]);
+    const timer = setInterval(() => {
+      void refresh().catch(() => {});
+    }, 30000);
+    return () => {
+      cancelled = true;
+      clearInterval(timer);
+    };
+  }, [userId, isSoundEnabled, desktopPermission]);
 
   // Synthesize alerts dynamically (merges database persisted items with live countdowns)
   const rawNotifications = useMemo(() => {
     if (!now) return persistedNotifications;
-    return generateSystemNotifications(persistedNotifications, events, setups, now);
+    return generateSystemNotifications(
+      persistedNotifications,
+      events,
+      setups,
+      now,
+    );
   }, [persistedNotifications, events, setups, now]);
 
   // Synchronize read states
@@ -140,11 +125,14 @@ export function useNotifications({
     return notifications.filter((n) => !n.read).length;
   }, [notifications]);
 
-  const markAsRead = useCallback((id: string) => {
-    setReadIds((prev) => new Set<string>(prev).add(id));
-    saveOfflineReadId(id);
-    void markNotificationReadAction(id);
-  }, []);
+  const markAsRead = useCallback(
+    (id: string) => {
+      setReadIds((prev) => new Set<string>(prev).add(id));
+      saveOfflineReadId(id, userId);
+      void markNotificationReadAction(id);
+    },
+    [userId],
+  );
 
   const markAllAsRead = useCallback(() => {
     const allIds = notifications.map((n) => n.id);
@@ -153,18 +141,22 @@ export function useNotifications({
       allIds.forEach((id) => next.add(id));
       return next;
     });
-    saveAllOfflineReadIds(allIds);
+    saveAllOfflineReadIds(allIds, userId);
     void markAllNotificationsReadAction();
-  }, [notifications]);
+  }, [notifications, userId]);
 
   const toggleSound = useCallback(() => {
     setIsSoundEnabled((prev) => {
       const next = !prev;
-      localStorage.setItem(SOUND_PREF_KEY, String(next));
+      try {
+        localStorage.setItem(`${SOUND_PREF_KEY}:${userId}`, String(next));
+      } catch {
+        /* Browser storage is optional. */
+      }
       if (next) playNotificationSound("INFO");
       return next;
     });
-  }, []);
+  }, [userId]);
 
   const requestDesktopPermission = useCallback(async () => {
     const permission = await requestDesktopNotificationPermission();

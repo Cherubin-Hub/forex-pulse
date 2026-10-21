@@ -56,13 +56,16 @@ const MISTAKE_LABELS: Record<MistakeCategory, string> = {
  */
 export function calculateDisciplineEdge(
   setups: TradingSetup[],
-  reviews: Record<string, TradePostMortem>
+  reviews: Record<string, TradePostMortem>,
 ): DisciplineEdgeSummary {
   const resolved = setups.filter(
-    (s) => s.status === "TP_REACHED" || s.status === "SL_HIT" || s.status === "INVALIDATED"
+    (s) => s.status === "TP_REACHED" || s.status === "SL_HIT",
   );
 
-  const gradeGroups: Record<ExecutionGrade, { wins: number; losses: number; r: number; count: number }> = {
+  const gradeGroups: Record<
+    ExecutionGrade,
+    { wins: number; losses: number; r: number; count: number }
+  > = {
     A: { wins: 0, losses: 0, r: 0, count: 0 },
     B: { wins: 0, losses: 0, r: 0, count: 0 },
     C: { wins: 0, losses: 0, r: 0, count: 0 },
@@ -70,7 +73,10 @@ export function calculateDisciplineEdge(
     F: { wins: 0, losses: 0, r: 0, count: 0 },
   };
 
-  const psychologyGroups: Record<string, { wins: number; losses: number; r: number; count: number }> = {};
+  const psychologyGroups: Record<
+    string,
+    { wins: number; losses: number; r: number; count: number }
+  > = {};
   const mistakeGroups: Record<string, { lostR: number; count: number }> = {};
 
   let totalReviewed = 0;
@@ -81,8 +87,8 @@ export function calculateDisciplineEdge(
 
     totalReviewed += 1;
     const r = calculateRealizedR(s);
-    const isWin = s.status === "TP_REACHED";
-    const isLoss = s.status === "SL_HIT";
+    const isWin = r > 0;
+    const isLoss = r < 0;
 
     // 1. Execution Grade Grouping
     gradeGroups[rev.grade].count += 1;
@@ -112,9 +118,12 @@ export function calculateDisciplineEdge(
   }
 
   // Build Grade Metrics
-  const gradeMetrics: GradeMetric[] = (["A", "B", "C", "D", "F"] as ExecutionGrade[]).map((grade) => {
+  const gradeMetrics: GradeMetric[] = (
+    ["A", "B", "C", "D", "F"] as ExecutionGrade[]
+  ).map((grade) => {
     const data = gradeGroups[grade];
-    const winRate = data.count > 0 ? Math.round((data.wins / data.count) * 100) : 0;
+    const winRate =
+      data.count > 0 ? Math.round((data.wins / data.count) * 100) : 0;
     const avgR = data.count > 0 ? Number((data.r / data.count).toFixed(2)) : 0;
 
     return {
@@ -132,7 +141,8 @@ export function calculateDisciplineEdge(
   const psychologyMetrics: PsychologyMetric[] = Object.entries(psychologyGroups)
     .map(([stateStr, data]) => {
       const state = stateStr as PsychologicalState;
-      const winRate = data.count > 0 ? Math.round((data.wins / data.count) * 100) : 0;
+      const winRate =
+        data.count > 0 ? Math.round((data.wins / data.count) * 100) : 0;
 
       return {
         state,

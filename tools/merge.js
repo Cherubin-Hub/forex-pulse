@@ -48,7 +48,7 @@ function runMerge() {
   }
 
   console.log(`[1/3] Scanning schema folder: ${path.relative(ROOT_DIR, SCHEMA_DIR)}`);
-  const sqlFiles = getSqlFiles(SCHEMA_DIR);
+  const sqlFiles = getSqlFiles(SCHEMA_DIR).concat(getSqlFiles(path.join(ROOT_DIR, "supabase", "migrations")));
 
   if (sqlFiles.length === 0) {
     console.warn("[WARN] No .sql files discovered in schema directory.");

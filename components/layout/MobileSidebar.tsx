@@ -5,12 +5,11 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Activity, Menu, X, Layers } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { SidebarNav } from "@/components/layout/SidebarNav";
-import { normalizeBaseUrl } from "@/lib/sso/session";
+import { gatewayBaseUrl } from "@/lib/redirects";
 
 export function MobileSidebar() {
   const [isOpen, setIsOpen] = useState(false);
-  const rawGatewayUrl = process.env.NEXT_PUBLIC_GATEWAY_URL || "http://localhost:3000";
-  const gatewayUrl = normalizeBaseUrl(rawGatewayUrl, "http://localhost:3000");
+  const gatewayUrl = gatewayBaseUrl();
 
   const close = () => setIsOpen(false);
 
@@ -70,9 +69,16 @@ export function MobileSidebar() {
                   <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-primary-foreground">
                     <Activity className="h-4 w-4" />
                   </div>
-                  <span className="text-base font-semibold tracking-tight">ForexPulse</span>
+                  <span className="text-base font-semibold tracking-tight">
+                    ForexPulse
+                  </span>
                 </div>
-                <Button variant="ghost" size="icon" aria-label="Close menu" onClick={close}>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  aria-label="Close menu"
+                  onClick={close}
+                >
                   <X className="h-5 w-5" />
                 </Button>
               </div>
@@ -81,7 +87,7 @@ export function MobileSidebar() {
 
               <div className="border-t border-border p-3">
                 <a
-                  href={`${gatewayUrl}/portal`}
+                  href={gatewayUrl ? `${gatewayUrl}/portal` : "/settings"}
                   onClick={close}
                   className="flex h-9 w-full items-center gap-3 rounded-md px-3 text-sm font-medium text-muted-foreground transition-colors hover:bg-sidebar-accent hover:text-emerald-500"
                 >

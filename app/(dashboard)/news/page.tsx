@@ -16,11 +16,17 @@ export default async function NewsPage() {
             Macroeconomic News & Wire Feeds
           </h2>
           <p className="text-sm text-muted-foreground mt-1">
-            Real-time central bank communications, geopolitical breaking news, and currency catalysts.
+            Verified recent central bank communications, market news, and
+            currency catalysts.
           </p>
         </div>
       </div>
 
+      {news.length === 0 && (
+        <p role="status" className="text-sm text-muted-foreground">
+          No verified recent news is available. Check the macro feed connection.
+        </p>
+      )}
       {/* Section 1: News Sentiment & Flow Radar */}
       <section>
         <NewsMetricsSummary articles={news} />
@@ -31,7 +37,8 @@ export default async function NewsPage() {
         <div>
           <h3 className="text-base font-semibold">Institutional Wire Feed</h3>
           <p className="text-xs text-muted-foreground">
-            Filter headlines by impact, isolate specific currency exposure, or search keywords.
+            Filter headlines by impact, isolate specific currency exposure, or
+            search keywords.
           </p>
         </div>
         <NewsFeed articles={news} />

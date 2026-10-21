@@ -17,6 +17,28 @@ export type Json =
 export interface Database {
   public: {
     Tables: {
+      gateway_sso_nonces: {
+        Row: { nonce_hash: string; expires_at: string };
+        Insert: { nonce_hash: string; expires_at: string };
+        Update: { expires_at?: string };
+        Relationships: [];
+      };
+      feed_health: {
+        Row: {
+          feed: string;
+          synced_at: string;
+          coverage_from: string | null;
+          coverage_until: string | null;
+        };
+        Insert: {
+          feed: string;
+          synced_at?: string;
+          coverage_from?: string | null;
+          coverage_until?: string | null;
+        };
+        Update: Partial<Database["public"]["Tables"]["feed_health"]["Insert"]>;
+        Relationships: [];
+      };
       trading_setups: {
         Row: {
           id: string;
@@ -33,6 +55,10 @@ export interface Database {
           invalidation_rule: string;
           notes: string | null;
           confluence_tags: string[];
+          original_stop_loss: number | null;
+          realized_r: number | null;
+          closed_at: string | null;
+          risk_percent: number;
           created_at: string;
           updated_at: string;
         };
@@ -51,15 +77,23 @@ export interface Database {
           invalidation_rule: string;
           notes?: string | null;
           confluence_tags?: string[];
+          original_stop_loss?: number | null;
+          realized_r?: number | null;
+          closed_at?: string | null;
+          risk_percent?: number;
           created_at?: string;
           updated_at?: string;
         };
-        Update: Partial<Database["public"]["Tables"]["trading_setups"]["Insert"]>;
+        Update: Partial<
+          Database["public"]["Tables"]["trading_setups"]["Insert"]
+        >;
         Relationships: [];
       };
       session_reports: {
         Row: {
           id: string;
+          owner_id: string | null;
+          session_window: string | null;
           title: string;
           session: SessionType;
           timestamp: string;
@@ -73,6 +107,8 @@ export interface Database {
         };
         Insert: {
           id?: string;
+          owner_id?: string | null;
+          session_window?: string | null;
           title: string;
           session: SessionType;
           timestamp?: string;
@@ -84,7 +120,9 @@ export interface Database {
           playbook?: Json;
           created_at?: string;
         };
-        Update: Partial<Database["public"]["Tables"]["session_reports"]["Insert"]>;
+        Update: Partial<
+          Database["public"]["Tables"]["session_reports"]["Insert"]
+        >;
         Relationships: [];
       };
       user_settings: {
@@ -97,6 +135,11 @@ export interface Database {
           max_open_setups: number;
           session_focus: string[];
           news_sensitivity: string;
+          account_balance: number;
+          leverage: number;
+          max_daily_loss_r: number;
+          automation_enabled: boolean;
+          manual_lockout_until: string | null;
           updated_at: string;
         };
         Insert: {
@@ -108,13 +151,22 @@ export interface Database {
           max_open_setups?: number;
           session_focus?: string[];
           news_sensitivity?: string;
+          account_balance?: number;
+          leverage?: number;
+          max_daily_loss_r?: number;
+          automation_enabled?: boolean;
+          manual_lockout_until?: string | null;
           updated_at?: string;
         };
-        Update: Partial<Database["public"]["Tables"]["user_settings"]["Insert"]>;
+        Update: Partial<
+          Database["public"]["Tables"]["user_settings"]["Insert"]
+        >;
         Relationships: [];
       };
       economic_events: {
         Row: {
+          data_source: string;
+          verified_at: string | null;
           id: string;
           title: string;
           currency: string;
@@ -128,6 +180,8 @@ export interface Database {
           created_at: string;
         };
         Insert: {
+          data_source?: string;
+          verified_at?: string | null;
           id: string;
           title: string;
           currency: string;
@@ -140,11 +194,15 @@ export interface Database {
           status?: DataStatus;
           created_at?: string;
         };
-        Update: Partial<Database["public"]["Tables"]["economic_events"]["Insert"]>;
+        Update: Partial<
+          Database["public"]["Tables"]["economic_events"]["Insert"]
+        >;
         Relationships: [];
       };
       market_news: {
         Row: {
+          data_source: string;
+          verified_at: string | null;
           id: string;
           headline: string;
           summary: string;
@@ -156,6 +214,8 @@ export interface Database {
           created_at: string;
         };
         Insert: {
+          data_source?: string;
+          verified_at?: string | null;
           id: string;
           headline: string;
           summary: string;
@@ -171,6 +231,8 @@ export interface Database {
       };
       gold_drivers: {
         Row: {
+          data_source: string;
+          verified_at: string | null;
           id: string;
           name: string;
           value: string;
@@ -180,6 +242,8 @@ export interface Database {
           created_at: string;
         };
         Insert: {
+          data_source?: string;
+          verified_at?: string | null;
           id?: string;
           name: string;
           value: string;
@@ -193,6 +257,8 @@ export interface Database {
       };
       gold_key_levels: {
         Row: {
+          data_source: string;
+          verified_at: string | null;
           id: string;
           price: number;
           type: "SUPPORT" | "RESISTANCE" | "PIVOT";
@@ -201,6 +267,8 @@ export interface Database {
           created_at: string;
         };
         Insert: {
+          data_source?: string;
+          verified_at?: string | null;
           id?: string;
           price: number;
           type: "SUPPORT" | "RESISTANCE" | "PIVOT";
@@ -208,11 +276,15 @@ export interface Database {
           notes?: string | null;
           created_at?: string;
         };
-        Update: Partial<Database["public"]["Tables"]["gold_key_levels"]["Insert"]>;
+        Update: Partial<
+          Database["public"]["Tables"]["gold_key_levels"]["Insert"]
+        >;
         Relationships: [];
       };
       technical_analysis: {
         Row: {
+          data_source: string;
+          verified_at: string | null;
           id: string;
           symbol: string;
           timeframes: Json;
@@ -220,13 +292,17 @@ export interface Database {
           updated_at: string;
         };
         Insert: {
+          data_source?: string;
+          verified_at?: string | null;
           id?: string;
           symbol: string;
           timeframes: Json;
           overall_bias: TrendDirection;
           updated_at?: string;
         };
-        Update: Partial<Database["public"]["Tables"]["technical_analysis"]["Insert"]>;
+        Update: Partial<
+          Database["public"]["Tables"]["technical_analysis"]["Insert"]
+        >;
         Relationships: [];
       };
       notifications: {
@@ -256,11 +332,15 @@ export interface Database {
           read?: boolean;
           created_at?: string;
         };
-        Update: Partial<Database["public"]["Tables"]["notifications"]["Insert"]>;
+        Update: Partial<
+          Database["public"]["Tables"]["notifications"]["Insert"]
+        >;
         Relationships: [];
       };
     };
     Views: Record<string, never>;
-    Functions: Record<string, never>;
+    Functions: {
+      ingest_macro_data: { Args: { payload: Json }; Returns: undefined };
+    };
   };
 }

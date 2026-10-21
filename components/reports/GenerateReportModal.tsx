@@ -10,45 +10,58 @@ const SESSIONS: { type: SessionType; label: string; desc: string }[] = [
   {
     type: "LONDON_OPEN",
     label: "London Open",
-    desc: "3:00 PM PHT — Focus on EUR, GBP liquidity sweeps and morning range expansion.",
+    desc: "London local opening time (DST-aware) — Focus on EUR, GBP liquidity sweeps and morning range expansion.",
   },
   {
     type: "NEW_YORK_OPEN",
     label: "New York Open",
-    desc: "8:00 PM PHT — Focus on USD catalysts, London overlap, and US equity market opens.",
+    desc: "New York local opening time (DST-aware) — Focus on USD catalysts, London overlap, and US equity market opens.",
   },
   {
     type: "ASIAN_WRAP",
     label: "Asian Wrap",
-    desc: "7:00 AM PHT — Asian range consolidation, Tokyo fix, and day structure setup.",
+    desc: "Tokyo session close — Asian range consolidation, Tokyo fix, and day structure setup.",
   },
 ];
 
 export function GenerateReportModal() {
   const [isOpen, setIsOpen] = useState(false);
-  const [selectedSession, setSelectedSession] = useState<SessionType>("LONDON_OPEN");
+  const [selectedSession, setSelectedSession] =
+    useState<SessionType>("LONDON_OPEN");
   const [isPending, startTransition] = useTransition();
-  const [statusMessage, setStatusMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
+  const [statusMessage, setStatusMessage] = useState<{
+    type: "success" | "error";
+    text: string;
+  } | null>(null);
 
   const handleGenerate = () => {
     setStatusMessage(null);
     startTransition(async () => {
       const result = await generateSessionReport(selectedSession);
       if (result.success) {
-        setStatusMessage({ type: "success", text: "Session report synthesized and published successfully!" });
+        setStatusMessage({
+          type: "success",
+          text: "Session report synthesized and published successfully!",
+        });
         setTimeout(() => {
           setIsOpen(false);
           setStatusMessage(null);
         }, 1200);
       } else {
-        setStatusMessage({ type: "error", text: result.error ?? "Failed to generate session report." });
+        setStatusMessage({
+          type: "error",
+          text: result.error ?? "Failed to generate session report.",
+        });
       }
     });
   };
 
   return (
     <>
-      <Button onClick={() => setIsOpen(true)} className="h-9 gap-1.5 text-xs font-semibold">
+      <Button
+        onClick={() => setIsOpen(true)}
+        className="h-9 gap-1.5 text-xs font-semibold"
+      >
         <Sparkles className="h-4 w-4" />
         Generate Report
       </Button>
@@ -61,10 +74,11 @@ export function GenerateReportModal() {
               <div>
                 <h3 className="text-lg font-bold tracking-tight flex items-center gap-2">
                   <Sparkles className="h-5 w-5 text-primary" />
-                  AI Session Intelligence Engine
+                  Verified Session Briefing
                 </h3>
                 <p className="text-xs text-muted-foreground mt-0.5">
-                  Synthesize live quotes, economic calendars, and open setups into an executive brief.
+                  Synthesize live quotes, economic calendars, and open setups
+                  into an executive brief.
                 </p>
               </div>
               <button
@@ -95,12 +109,16 @@ export function GenerateReportModal() {
                       }`}
                     >
                       <div className="flex items-center justify-between">
-                        <span className="font-semibold text-xs text-foreground">{s.label}</span>
+                        <span className="font-semibold text-xs text-foreground">
+                          {s.label}
+                        </span>
                         {isSelected && (
                           <span className="h-2 w-2 rounded-full bg-primary" />
                         )}
                       </div>
-                      <p className="mt-1 text-[11px] leading-relaxed">{s.desc}</p>
+                      <p className="mt-1 text-[11px] leading-relaxed">
+                        {s.desc}
+                      </p>
                     </div>
                   );
                 })}

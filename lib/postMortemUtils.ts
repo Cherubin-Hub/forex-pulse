@@ -44,9 +44,24 @@ const STORAGE_KEY = "forex_pulse_post_mortems_v1";
  * Calculates realized R-multiple based on resolution status.
  */
 export function calculateRealizedR(setup: TradingSetup): number {
-  if (setup.status === "TP_REACHED") return Number(setup.riskReward.toFixed(1));
-  if (setup.status === "SL_HIT") return -1.0;
-  return 0.0; // INVALIDATED or EXPIRED
+  if (
+    setup.realizedR !== null &&
+    setup.realizedR !== undefined &&
+    Number.isFinite(setup.realizedR)
+  )
+    return setup.realizedR;
+  const entry = (setup.entryMin + setup.entryMax) / 2;
+  const risk = Math.abs(entry - (setup.originalStopLoss ?? setup.stopLoss));
+  if (risk <= 0) return 0;
+  if (setup.status === "TP_REACHED")
+    return Math.abs(setup.takeProfit1 - entry) / risk;
+  if (setup.status === "SL_HIT")
+    return (
+      (setup.direction === "LONG"
+        ? setup.stopLoss - entry
+        : entry - setup.stopLoss) / risk
+    );
+  return 0;
 }
 
 /**
@@ -59,10 +74,18 @@ export function calculateRealizedPips(setup: TradingSetup): number {
   const entryMid = (setup.entryMin + setup.entryMax) / 2;
 
   if (setup.status === "TP_REACHED") {
-    return Number((Math.abs(setup.takeProfit1 - entryMid) * multiplier).toFixed(1));
+    return Number(
+      (Math.abs(setup.takeProfit1 - entryMid) * multiplier).toFixed(1),
+    );
   }
   if (setup.status === "SL_HIT") {
-    return -Number((Math.abs(entryMid - setup.stopLoss) * multiplier).toFixed(1));
+    return Number(
+      (
+        (setup.direction === "LONG"
+          ? setup.stopLoss - entryMid
+          : entryMid - setup.stopLoss) * multiplier
+      ).toFixed(1),
+    );
   }
   return 0.0;
 }
@@ -70,7 +93,10 @@ export function calculateRealizedPips(setup: TradingSetup): number {
 /**
  * Formats elapsed holding time between trade creation and resolution.
  */
-export function calculateTradeDuration(createdAt: string, updatedAt: string): string {
+export function calculateTradeDuration(
+  createdAt: string,
+  updatedAt: string,
+): string {
   const start = new Date(createdAt).getTime();
   const end = new Date(updatedAt).getTime();
   const diffMs = Math.max(0, end - start);
@@ -88,7 +114,9 @@ export function calculateTradeDuration(createdAt: string, updatedAt: string): st
 /**
  * Computes a weighted 0-100% discipline score from the adherence checklist.
  */
-export function calculateDisciplineScore(rules: TradePostMortem["rulesFollowed"]): number {
+export function calculateDisciplineScore(
+  rules: TradePostMortem["rulesFollowed"],
+): number {
   let score = 0;
   if (rules.planFollowed) score += 30;
   if (rules.riskManaged) score += 30;
@@ -115,10 +143,12 @@ export function getGradeBadgeColor(grade: ExecutionGrade): string {
 /**
  * Loads all stored post-mortem reviews from localStorage.
  */
-export function loadAllPostMortems(): Record<string, TradePostMortem> {
-  if (typeof window === "undefined") return {};
+export function loadAllPostMortems(
+  userId?: string,
+): Record<string, TradePostMortem> {
+  if (!userId || typeof window === "undefined") return {};
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
+    const raw = localStorage.getItem(`${STORAGE_KEY}:${userId}`);
     return raw ? JSON.parse(raw) : {};
   } catch {
     return {};
@@ -128,12 +158,12 @@ export function loadAllPostMortems(): Record<string, TradePostMortem> {
 /**
  * Persists a post-mortem review for a specific trade setup.
  */
-export function savePostMortem(review: TradePostMortem): void {
-  if (typeof window === "undefined") return;
+export function savePostMortem(review: TradePostMortem, userId?: string): void {
+  if (!userId || typeof window === "undefined") return;
   try {
-    const existing = loadAllPostMortems();
+    const existing = loadAllPostMortems(userId);
     existing[review.setupId] = review;
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(existing));
+    localStorage.setItem(`${STORAGE_KEY}:${userId}`, JSON.stringify(existing));
   } catch (err) {
     console.error("Failed to persist post-mortem review:", err);
   }

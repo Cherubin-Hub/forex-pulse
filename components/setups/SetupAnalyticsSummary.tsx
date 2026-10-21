@@ -5,13 +5,19 @@ import { Trophy, TrendingUp, Percent, Hash } from "lucide-react";
 import type { SetupAnalytics } from "@/lib/analyticsUtils";
 import { cn } from "@/lib/utils";
 
-export function SetupAnalyticsSummary({ analytics }: { analytics: SetupAnalytics }) {
-  const winPercent = analytics.completedTrades > 0 
-    ? (analytics.wins / analytics.completedTrades) * 100 
-    : 0;
-  const lossPercent = analytics.completedTrades > 0 
-    ? (analytics.losses / analytics.completedTrades) * 100 
-    : 0;
+export function SetupAnalyticsSummary({
+  analytics,
+}: {
+  analytics: SetupAnalytics;
+}) {
+  const winPercent =
+    analytics.completedTrades > 0
+      ? (analytics.wins / analytics.completedTrades) * 100
+      : 0;
+  const lossPercent =
+    analytics.completedTrades > 0
+      ? (analytics.losses / analytics.completedTrades) * 100
+      : 0;
 
   return (
     <div className="space-y-4">
@@ -47,14 +53,26 @@ export function SetupAnalyticsSummary({ analytics }: { analytics: SetupAnalytics
         >
           <div className="flex items-center justify-between text-muted-foreground">
             <span className="text-xs font-medium">Net Return (R)</span>
-            <TrendingUp className={cn("h-4 w-4", analytics.netR >= 0 ? "text-emerald-500" : "text-rose-500")} />
+            <TrendingUp
+              className={cn(
+                "h-4 w-4",
+                analytics.netR >= 0 ? "text-emerald-500" : "text-rose-500",
+              )}
+            />
           </div>
           <div className="mt-2 flex items-baseline gap-2">
-            <span className={cn("text-2xl font-bold tracking-tight", analytics.netR >= 0 ? "text-emerald-500" : "text-rose-500")}>
-              {analytics.netR > 0 ? `+${analytics.netR}R` : `${analytics.netR}R`}
+            <span
+              className={cn(
+                "text-2xl font-bold tracking-tight",
+                analytics.netR >= 0 ? "text-emerald-500" : "text-rose-500",
+              )}
+            >
+              {analytics.netR > 0
+                ? `+${analytics.netR}R`
+                : `${analytics.netR}R`}
             </span>
             <span className="text-xs text-muted-foreground">
-              Profit Factor: {analytics.profitFactor}
+              Profit Factor: {analytics.profitFactor ?? "No losses yet"}
             </span>
           </div>
         </motion.div>

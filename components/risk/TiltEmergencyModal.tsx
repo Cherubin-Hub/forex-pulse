@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { ShieldAlert, Lock, HeartPulse, X } from "lucide-react";
-import { engageManualTiltLockout } from "@/lib/circuitBreakerUtils";
+import { useSettings } from "@/hooks/useSettings";
 
 interface TiltEmergencyModalProps {
   isOpen: boolean;
@@ -15,15 +15,26 @@ export function TiltEmergencyModal({
   onClose,
   onEngaged,
 }: TiltEmergencyModalProps) {
+  const { settings, updateSettings } = useSettings();
+  const [saving, setSaving] = useState(false);
   const [selectedHours, setSelectedHours] = useState(4);
   const [confirmed, setConfirmed] = useState(false);
 
   if (!isOpen) return null;
 
-  const handleEngageLockout = () => {
-    engageManualTiltLockout(selectedHours);
-    onEngaged();
-    onClose();
+  const handleEngageLockout = async () => {
+    setSaving(true);
+    const saved = await updateSettings({
+      ...settings,
+      manualLockoutUntil: new Date(
+        Date.now() + selectedHours * 3600000,
+      ).toISOString(),
+    });
+    setSaving(false);
+    if (saved) {
+      onEngaged();
+      onClose();
+    }
   };
 
   return (
@@ -67,7 +78,9 @@ export function TiltEmergencyModal({
             <span>Preserve Capital. Step Away from the Charts.</span>
           </div>
           <p className="text-[11px] leading-relaxed">
-            If you feel frustration, revenge impulses, or emotional tilt after a stop-out, the highest edge action you can take right now is to stop trading and allow dopamine levels to reset.
+            If you feel frustration, revenge impulses, or emotional tilt after a
+            stop-out, the highest edge action you can take right now is to stop
+            trading and allow dopamine levels to reset.
           </p>
         </div>
 
@@ -93,7 +106,9 @@ export function TiltEmergencyModal({
                 }`}
               >
                 <div className="font-mono text-sm">{opt.label}</div>
-                <div className="text-[10px] text-muted-foreground">{opt.desc}</div>
+                <div className="text-[10px] text-muted-foreground">
+                  {opt.desc}
+                </div>
               </button>
             ))}
           </div>
@@ -108,7 +123,8 @@ export function TiltEmergencyModal({
             className="mt-0.5 rounded border-border"
           />
           <span className="leading-tight text-muted-foreground">
-            I confirm that I am stepping away to protect my account equity and mental capital.
+            I confirm that I am stepping away to protect my account equity and
+            mental capital.
           </span>
         </label>
 
@@ -123,7 +139,7 @@ export function TiltEmergencyModal({
           </button>
           <button
             type="button"
-            disabled={!confirmed}
+            disabled={!confirmed || saving}
             onClick={handleEngageLockout}
             className={`inline-flex items-center gap-1.5 rounded-lg px-4 py-1.5 text-xs font-semibold transition-all ${
               confirmed

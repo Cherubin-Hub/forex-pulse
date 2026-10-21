@@ -6,7 +6,11 @@ const MOCK_SOURCE = "Global Macro";
  * Generates an ISO timestamp in PHT (+08:00) with a relative day offset from today.
  * Ensures mock calendar data is always active and within the current trading week.
  */
-function getRelativePHTTimestamp(dayOffset: number, hours: number, minutes = 0): string {
+function getRelativePHTTimestamp(
+  dayOffset: number,
+  hours: number,
+  minutes = 0,
+): string {
   const d = new Date();
   d.setDate(d.getDate() + dayOffset);
   const pad = (n: number) => String(n).padStart(2, "0");
@@ -31,42 +35,50 @@ export const EVENT_RELEASE_RESOLUTIONS: Record<
   "evt-usd-ism-services": {
     actual: "52.1",
     bias: "BEAT",
-    headline: "ISM Services PMI beats expectations, signaling resilient US service sector expansion.",
+    headline:
+      "ISM Services PMI beats expectations, signaling resilient US service sector expansion.",
   },
   "evt-aud-rba-decision": {
     actual: "3.60%",
     bias: "IN_LINE",
-    headline: "RBA maintains cash rate at 3.60% as inflation moderates within forecast band.",
+    headline:
+      "RBA maintains cash rate at 3.60% as inflation moderates within forecast band.",
   },
   "evt-eur-german-ip": {
     actual: "-0.1%",
     bias: "MISS",
-    headline: "German Industrial Production contracts -0.1%, trailing the +0.2% consensus forecast.",
+    headline:
+      "German Industrial Production contracts -0.1%, trailing the +0.2% consensus forecast.",
   },
   "evt-usd-fomc-minutes": {
     actual: "Hawkish Pause",
     bias: "BEAT",
-    headline: "FOMC Minutes signal policymakers prefer maintaining higher rates for longer.",
+    headline:
+      "FOMC Minutes signal policymakers prefer maintaining higher rates for longer.",
   },
   "evt-gbp-gdp": {
     actual: "0.2%",
     bias: "BEAT",
-    headline: "UK Monthly GDP expands 0.2%, exceeding the 0.1% forecast led by services output.",
+    headline:
+      "UK Monthly GDP expands 0.2%, exceeding the 0.1% forecast led by services output.",
   },
   "evt-usd-cpi": {
     actual: "0.4%",
     bias: "BEAT",
-    headline: "US CPI rises 0.4% MoM vs 0.3% expected, driven by shelter and energy inflation.",
+    headline:
+      "US CPI rises 0.4% MoM vs 0.3% expected, driven by shelter and energy inflation.",
   },
   "evt-usd-claims": {
     actual: "218K",
     bias: "BEAT",
-    headline: "US Initial Jobless Claims drop to 218K vs 225K forecast, labor market holds tight.",
+    headline:
+      "US Initial Jobless Claims drop to 218K vs 225K forecast, labor market holds tight.",
   },
   "evt-usd-nfp": {
     actual: "165K",
     bias: "BEAT",
-    headline: "US Non-Farm Payrolls surge by 165K vs 150K estimate, affirming labor strength.",
+    headline:
+      "US Non-Farm Payrolls surge by 165K vs 150K estimate, affirming labor strength.",
   },
   "evt-usd-unemployment": {
     actual: "4.1%",
@@ -91,7 +103,7 @@ export const MOCK_EVENTS: EconomicEvent[] = [
     previous: "51.5",
     actual: "52.1",
     source: MOCK_SOURCE,
-    status: "LIVE",
+    status: "MOCK",
   },
   {
     id: "evt-aud-rba-decision",
@@ -103,7 +115,7 @@ export const MOCK_EVENTS: EconomicEvent[] = [
     previous: "3.60%",
     actual: "3.60%",
     source: MOCK_SOURCE,
-    status: "LIVE",
+    status: "MOCK",
   },
   {
     id: "evt-eur-german-ip",
@@ -115,7 +127,7 @@ export const MOCK_EVENTS: EconomicEvent[] = [
     previous: "-0.4%",
     actual: "-0.1%",
     source: MOCK_SOURCE,
-    status: "LIVE",
+    status: "MOCK",
   },
   {
     id: "evt-usd-fomc-minutes",
@@ -127,7 +139,7 @@ export const MOCK_EVENTS: EconomicEvent[] = [
     previous: null,
     actual: "Hawkish Pause",
     source: MOCK_SOURCE,
-    status: "LIVE",
+    status: "MOCK",
   },
   {
     id: "evt-gbp-gdp",
@@ -139,7 +151,7 @@ export const MOCK_EVENTS: EconomicEvent[] = [
     previous: "0.0%",
     actual: "0.2%",
     source: MOCK_SOURCE,
-    status: "LIVE",
+    status: "MOCK",
   },
   {
     id: "evt-usd-cpi",
@@ -151,7 +163,7 @@ export const MOCK_EVENTS: EconomicEvent[] = [
     previous: "0.4%",
     actual: "0.4%",
     source: MOCK_SOURCE,
-    status: "LIVE",
+    status: "MOCK",
   },
   {
     id: "evt-usd-claims",
@@ -163,7 +175,7 @@ export const MOCK_EVENTS: EconomicEvent[] = [
     previous: "219K",
     actual: null,
     source: MOCK_SOURCE,
-    status: "LIVE",
+    status: "MOCK",
   },
   {
     id: "evt-usd-nfp",
@@ -175,7 +187,7 @@ export const MOCK_EVENTS: EconomicEvent[] = [
     previous: "142K",
     actual: null,
     source: MOCK_SOURCE,
-    status: "LIVE",
+    status: "MOCK",
   },
   {
     id: "evt-usd-unemployment",
@@ -187,7 +199,7 @@ export const MOCK_EVENTS: EconomicEvent[] = [
     previous: "4.2%",
     actual: null,
     source: MOCK_SOURCE,
-    status: "LIVE",
+    status: "MOCK",
   },
   {
     id: "evt-cad-employment",
@@ -199,21 +211,17 @@ export const MOCK_EVENTS: EconomicEvent[] = [
     previous: "22.1K",
     actual: null,
     source: MOCK_SOURCE,
-    status: "LIVE",
+    status: "MOCK",
   },
 ];
 
 /**
  * Resolves or auto-populates the actual value of an economic event if its scheduled release time has elapsed.
  */
-export function resolveEventActual(event: EconomicEvent, now = new Date()): EconomicEvent {
-  const isPast = new Date(event.scheduledAt).getTime() <= now.getTime();
-  if (isPast && (!event.actual || event.actual === "—")) {
-    const resolution = EVENT_RELEASE_RESOLUTIONS[event.id];
-    return {
-      ...event,
-      actual: resolution?.actual ?? (event.forecast ?? event.previous ?? "Released"),
-    };
-  }
+export function resolveEventActual(
+  event: EconomicEvent,
+  now = new Date(),
+): EconomicEvent {
+  void now;
   return event;
 }

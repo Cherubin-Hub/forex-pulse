@@ -10,7 +10,10 @@ export function DrawdownToleranceCard() {
 
   const table = useMemo(() => {
     if (!isLoaded || !settings) return [];
-    return calculateDrawdownTable(10000, settings.riskPerTradePercent);
+    return calculateDrawdownTable(
+      settings.accountBalance,
+      settings.riskPerTradePercent,
+    );
   }, [isLoaded, settings]);
 
   if (!isLoaded || !settings) return null;
@@ -22,7 +25,8 @@ export function DrawdownToleranceCard() {
         <div>
           <h3 className="font-semibold text-sm">Drawdown Resilience Matrix</h3>
           <p className="text-xs text-muted-foreground">
-            Consecutive loss impact at {settings.riskPerTradePercent}% risk per trade.
+            Consecutive loss impact at {settings.riskPerTradePercent}% risk per
+            trade.
           </p>
         </div>
       </div>
@@ -41,9 +45,15 @@ export function DrawdownToleranceCard() {
             {table.map((row) => (
               <tr key={row.losses} className="hover:bg-muted/20">
                 <td className="py-1.5 font-semibold">{row.losses} in a row</td>
-                <td className="py-1.5">${row.remainingBalance.toLocaleString()}</td>
-                <td className="py-1.5 text-rose-500 font-semibold">-{row.drawdownPercent}%</td>
-                <td className="py-1.5 text-emerald-500 font-semibold">+{row.requiredRecoveryPercent}%</td>
+                <td className="py-1.5">
+                  ${row.remainingBalance.toLocaleString()}
+                </td>
+                <td className="py-1.5 text-rose-500 font-semibold">
+                  -{row.drawdownPercent}%
+                </td>
+                <td className="py-1.5 text-emerald-500 font-semibold">
+                  +{row.requiredRecoveryPercent}%
+                </td>
               </tr>
             ))}
           </tbody>
@@ -53,7 +63,9 @@ export function DrawdownToleranceCard() {
       <div className="flex items-start gap-2 rounded-lg border border-border bg-muted/20 p-2.5 text-[11px] text-muted-foreground">
         <ShieldCheck className="h-4 w-4 shrink-0 text-emerald-500 mt-0.5" />
         <span>
-          Mathematical Law: A 20% drawdown requires a 25% gain to recover. Keeping your risk at {settings.riskPerTradePercent}% guarantees survival through normal statistical drawdown streaks.
+          Mathematical Law: A 20% drawdown requires a 25% gain to recover.
+          Keeping your risk at {settings.riskPerTradePercent}% guarantees
+          survival through normal statistical drawdown streaks.
         </span>
       </div>
     </div>

@@ -1,26 +1,16 @@
 import crypto from "crypto";
 
-export interface SSOPayload {
-  userId: string;
-  email: string;
-  timestamp: number;
-  nonce: string;
-  appName: string;
-}
-
-export interface VerificationResult {
-  valid: boolean;
-  error?: string;
-  payload?: SSOPayload;
-}
+import { ssoPayloadSchema } from "@/lib/schemas/auth";
+import type { VerificationResult } from "@/types/auth";
+export type { SSOPayload, VerificationResult } from "@/types/auth";
 
 /**
  * Validates a cross-application SSO token and its cryptographic HMAC signature.
- * Enforces a strict 60-second replay window to prevent re-use of intercepted URLs.
+ * Enforces a 60-second age limit. The callback consumes the nonce atomically.
  */
 export function verifySSOToken(
   rawPayloadBase64: string,
-  signature: string
+  signature: string,
 ): VerificationResult {
   const secret = process.env.CROSS_APP_SSO_SECRET;
 
@@ -50,8 +40,10 @@ export function verifySSOToken(
     }
 
     // 3. Decode and parse the JSON payload
-    const decodedJson = Buffer.from(rawPayloadBase64, "base64").toString("utf-8");
-    const payload: SSOPayload = JSON.parse(decodedJson);
+    const decodedJson = Buffer.from(rawPayloadBase64, "base64").toString(
+      "utf-8",
+    );
+    const payload = ssoPayloadSchema.parse(JSON.parse(decodedJson));
 
     // 4. Validate time window (must be within 60 seconds of issuance)
     const now = Date.now();

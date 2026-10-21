@@ -1,5 +1,5 @@
 import type { SessionReport } from "@/types/report";
-import { createServerSupabaseClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { mapRowToReport } from "@/lib/supabase/mappers";
 import { getAuthenticatedUserId } from "@/lib/auth/user";
 
@@ -12,11 +12,11 @@ export async function getSessionReports(): Promise<SessionReport[]> {
     const userId = await getAuthenticatedUserId();
     if (!userId) return [];
 
-    const supabase = await createServerSupabaseClient();
+    const supabase = createAdminClient();
     const { data, error } = await supabase
       .from("session_reports")
       .select("*")
-      .eq("playbook->>userId", userId)
+      .eq("owner_id", userId)
       .order("timestamp", { ascending: false });
 
     if (error || !data || data.length === 0) {
@@ -26,7 +26,10 @@ export async function getSessionReports(): Promise<SessionReport[]> {
 
     return data.map(mapRowToReport);
   } catch (err) {
-    console.warn("Supabase client unavailable for session reports:", err instanceof Error ? err.message : err);
+    console.warn(
+      "Supabase client unavailable for session reports:",
+      err instanceof Error ? err.message : err,
+    );
     return [];
   }
 }

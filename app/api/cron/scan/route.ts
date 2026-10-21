@@ -1,50 +1,29 @@
 import { NextRequest, NextResponse } from "next/server";
+import { hasSecretAuthorization } from "@/lib/cronAuth";
+import { refreshMacroFeeds } from "@/lib/services/refreshFeeds";
 import { executeHeadlessAutomationCycle } from "@/lib/services/headlessAutomationEngine";
-import { verifySessionToken } from "@/lib/sso/session";
-
 export const dynamic = "force-dynamic";
-export const maxDuration = 60; // Up to 60s timeout for cron
-
-/**
- * 24/7 Headless Server Cron Endpoint.
- * Can be invoked by external webhook schedulers (e.g. cron-job.org), Vercel Cron, or authenticated traders.
- */
-async function handleScan(req: NextRequest) {
-  const cronSecret = process.env.CRON_SECRET;
-
-  if (cronSecret) {
-    const authHeader = req.headers.get("authorization");
-    const searchParam = req.nextUrl.searchParams.get("secret");
-
-    const tokenMatches =
-      authHeader === `Bearer ${cronSecret}` || searchParam === cronSecret;
-
-    // Check if called from an authenticated browser session
-    const gatewayCookie = req.cookies.get("fp_gateway_session")?.value;
-    const sessionResult = gatewayCookie ? await verifySessionToken(gatewayCookie) : { valid: false };
-
-    if (!tokenMatches && !sessionResult.valid) {
-      return NextResponse.json(
-        {
-          success: false,
-          error:
-            "Unauthorized cron invocation. Provide 'Authorization: Bearer <CRON_SECRET>' header or append '?secret=<CRON_SECRET>' to the request URL.",
-        },
-        { status: 401 }
-      );
-    }
+export const maxDuration = 60;
+async function handle(request: NextRequest) {
+  if (!hasSecretAuthorization(request.headers, process.env.CRON_SECRET))
+    return NextResponse.json(
+      { success: false, error: "Unauthorized" },
+      { status: 401 },
+    );
+  try {
+    await refreshMacroFeeds();
+  } catch (error: unknown) {
+    console.error(
+      "Macro refresh failed:",
+      error instanceof Error ? error.message : "Unavailable",
+    );
   }
-
   const result = await executeHeadlessAutomationCycle();
-  return NextResponse.json(result, {
-    status: result.success ? 200 : 500,
-  });
+  return NextResponse.json(result, { status: result.success ? 200 : 503 });
 }
-
-export async function GET(req: NextRequest) {
-  return handleScan(req);
+export async function GET(request: NextRequest) {
+  return handle(request);
 }
-
-export async function POST(req: NextRequest) {
-  return handleScan(req);
+export async function POST(request: NextRequest) {
+  return handle(request);
 }

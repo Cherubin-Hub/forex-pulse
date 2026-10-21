@@ -7,7 +7,7 @@ import type { EconomicEvent } from "@/types/calendar";
 import type { TradingSetup } from "@/types/setup";
 import type { SystemNotification } from "@/types/notification";
 import { NAV_SECTIONS } from "@/lib/constants/navigation";
-import { normalizeBaseUrl } from "@/lib/sso/session";
+import { gatewayBaseUrl } from "@/lib/redirects";
 import { ThemeToggle } from "@/components/layout/ThemeToggle";
 import { MobileSidebar } from "@/components/layout/MobileSidebar";
 import { UserNav } from "@/components/layout/UserNav";
@@ -24,18 +24,18 @@ function getPageTitle(pathname: string): string {
 }
 
 interface HeaderProps {
+  email?: string;
   notifications?: SystemNotification[];
   events?: EconomicEvent[];
   setups?: TradingSetup[];
 }
 
-export function Header({ notifications, events, setups }: HeaderProps) {
+export function Header({ email, notifications, events, setups }: HeaderProps) {
   const pathname = usePathname();
   const title = getPageTitle(pathname);
   const [isCommandOpen, setIsCommandOpen] = useState(false);
 
-  const rawGatewayUrl = process.env.NEXT_PUBLIC_GATEWAY_URL || "http://localhost:3000";
-  const gatewayUrl = normalizeBaseUrl(rawGatewayUrl, "http://localhost:3000");
+  const gatewayUrl = gatewayBaseUrl();
 
   // Global Ctrl+K / Cmd+K keyboard shortcut listener
   useEffect(() => {
@@ -62,7 +62,7 @@ export function Header({ notifications, events, setups }: HeaderProps) {
         <div className="flex items-center gap-2">
           {/* Return to Pulse Gateway Button */}
           <a
-            href={`${gatewayUrl}/portal`}
+            href={gatewayUrl ? `${gatewayUrl}/portal` : "/settings"}
             className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-secondary/50 px-2.5 py-1.5 text-xs font-medium text-foreground hover:bg-secondary hover:border-emerald-500/40 hover:text-emerald-500 transition-all shadow-xs"
             title="Return to Pulse Gateway Hub"
           >
@@ -90,7 +90,7 @@ export function Header({ notifications, events, setups }: HeaderProps) {
             setups={setups}
           />
           <ThemeToggle />
-          <UserNav />
+          <UserNav email={email} />
         </div>
       </header>
 

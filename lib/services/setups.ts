@@ -1,5 +1,5 @@
 import type { TradingSetup } from "@/types/setup";
-import { createServerSupabaseClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { mapRowToSetup } from "@/lib/supabase/mappers";
 import { getAuthenticatedUserId } from "@/lib/auth/user";
 
@@ -12,7 +12,7 @@ export async function getActiveSetups(): Promise<TradingSetup[]> {
     const userId = await getAuthenticatedUserId();
     if (!userId) return [];
 
-    const supabase = await createServerSupabaseClient();
+    const supabase = createAdminClient();
     const { data, error } = await supabase
       .from("trading_setups")
       .select("*")
@@ -21,13 +21,17 @@ export async function getActiveSetups(): Promise<TradingSetup[]> {
       .order("created_at", { ascending: false });
 
     if (error || !data || data.length === 0) {
-      if (error) console.warn("Supabase active setups query error:", error.message);
+      if (error)
+        console.warn("Supabase active setups query error:", error.message);
       return [];
     }
 
     return data.map(mapRowToSetup);
   } catch (err) {
-    console.warn("Supabase client unavailable for active setups:", err instanceof Error ? err.message : err);
+    console.warn(
+      "Supabase client unavailable for active setups:",
+      err instanceof Error ? err.message : err,
+    );
     return [];
   }
 }
@@ -41,7 +45,7 @@ export async function getHistorySetups(): Promise<TradingSetup[]> {
     const userId = await getAuthenticatedUserId();
     if (!userId) return [];
 
-    const supabase = await createServerSupabaseClient();
+    const supabase = createAdminClient();
     const { data, error } = await supabase
       .from("trading_setups")
       .select("*")
@@ -50,13 +54,17 @@ export async function getHistorySetups(): Promise<TradingSetup[]> {
       .order("created_at", { ascending: false });
 
     if (error || !data || data.length === 0) {
-      if (error) console.warn("Supabase history setups query error:", error.message);
+      if (error)
+        console.warn("Supabase history setups query error:", error.message);
       return [];
     }
 
     return data.map(mapRowToSetup);
   } catch (err) {
-    console.warn("Supabase client unavailable for history setups:", err instanceof Error ? err.message : err);
+    console.warn(
+      "Supabase client unavailable for history setups:",
+      err instanceof Error ? err.message : err,
+    );
     return [];
   }
 }

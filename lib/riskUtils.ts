@@ -12,6 +12,8 @@ export type PositionSizeParams = {
   slPips?: number;
   entryPrice?: number;
   stopLossPrice?: number;
+  marketPrice?: number;
+  leverage?: number;
 };
 
 export type PositionSizeResult = {
@@ -23,6 +25,8 @@ export type PositionSizeResult = {
   effectiveSlPips: number;
   pipValuePerLot: number;
   estimatedMargin: number;
+  actualRiskAmount: number;
+  error?: string;
 };
 
 export type CurrencyNetExposure = {
@@ -53,69 +57,97 @@ export type DrawdownStep = {
 /**
  * Calculates accurate lot sizing, pip value, and margin across Forex and Commodities.
  */
-export function calculatePositionSize(params: PositionSizeParams): PositionSizeResult {
-  const { balance, riskPercent, symbol, mode, slPips = 20, entryPrice = 0, stopLossPrice = 0 } = params;
-
-  const riskAmount = Number((balance * (riskPercent / 100)).toFixed(2));
-  const isGold = symbol === "XAUUSD";
-  const isJpy = symbol.includes("JPY");
-
-  let effectiveSlPips = 0;
-  let pipValuePerLot = 10; // Default $10/pip for standard EUR/USD lot
-
-  if (isGold) {
-    // 1 standard lot = 100 troy oz. $1.00 price change = $100 per lot.
-    // 1 pip (0.10) = $10.00 per lot.
-    pipValuePerLot = 10;
-    if (mode === "PRICE") {
-      const priceDistance = Math.abs(entryPrice - stopLossPrice);
-      effectiveSlPips = Number((priceDistance * 10).toFixed(1)); // 1 pip = 0.10
-    } else {
-      effectiveSlPips = Math.max(0.1, slPips);
-    }
-  } else if (isJpy) {
-    // 1 pip = 0.01. Approximate USD value per pip is ~$6.50
-    pipValuePerLot = 6.5;
-    if (mode === "PRICE") {
-      const priceDistance = Math.abs(entryPrice - stopLossPrice);
-      effectiveSlPips = Number((priceDistance / 0.01).toFixed(1));
-    } else {
-      effectiveSlPips = Math.max(1, slPips);
-    }
-  } else {
-    // Standard major pairs (EURUSD, GBPUSD, AUDUSD, etc.)
-    pipValuePerLot = symbol === "USDCAD" || symbol === "USDCHF" ? 7.3 : 10;
-    if (mode === "PRICE") {
-      const priceDistance = Math.abs(entryPrice - stopLossPrice);
-      effectiveSlPips = Number((priceDistance / 0.0001).toFixed(1));
-    } else {
-      effectiveSlPips = Math.max(1, slPips);
-    }
-  }
-
-  // Prevent division by zero
-  const rawLots = effectiveSlPips > 0 ? riskAmount / (effectiveSlPips * pipValuePerLot) : 0;
-  const lotSize = Math.max(0.01, Number(rawLots.toFixed(2)));
-  const miniLots = Number((lotSize * 10).toFixed(1));
-  const microLots = Number((lotSize * 100).toFixed(0));
-
-  const contractMultiplier = isGold ? 100 : 100000;
-  const units = Math.round(lotSize * contractMultiplier);
-
-  // Approximate margin required at 1:100 leverage
-  const referencePrice = entryPrice > 0 ? entryPrice : isGold ? 2650 : 1.1;
-  const notionalValue = isGold ? units * referencePrice : lotSize * 100000;
-  const estimatedMargin = Number((notionalValue / 100).toFixed(2));
-
+export function calculatePositionSize(
+  params: PositionSizeParams,
+): PositionSizeResult {
+  const {
+    balance,
+    riskPercent,
+    symbol,
+    mode,
+    slPips = 0,
+    entryPrice = 0,
+    stopLossPrice = 0,
+    marketPrice = 0,
+    leverage = 100,
+  } = params;
+  const empty: PositionSizeResult = {
+    riskAmount: 0,
+    lotSize: 0,
+    miniLots: 0,
+    microLots: 0,
+    units: 0,
+    effectiveSlPips: 0,
+    pipValuePerLot: 0,
+    estimatedMargin: 0,
+    actualRiskAmount: 0,
+  };
+  const instrument = INSTRUMENTS.find((value) => value.symbol === symbol);
+  if (
+    !instrument ||
+    ![balance, riskPercent, leverage].every(Number.isFinite) ||
+    balance <= 0 ||
+    riskPercent <= 0 ||
+    riskPercent > 5 ||
+    leverage < 1
+  )
+    return {
+      ...empty,
+      error: "Enter a positive balance and valid risk and leverage.",
+    };
+  const price = mode === "PRICE" ? entryPrice : marketPrice;
+  if (!Number.isFinite(price) || price <= 0)
+    return {
+      ...empty,
+      error: "A verified market price or a valid entry price is required.",
+    };
+  const pip =
+    instrument.category === "COMMODITY"
+      ? 0.1
+      : instrument.quote === "JPY"
+        ? 0.01
+        : 0.0001;
+  const distance =
+    mode === "PRICE" ? Math.abs(entryPrice - stopLossPrice) / pip : slPips;
+  if (
+    !Number.isFinite(distance) ||
+    distance <= 0 ||
+    (mode === "PRICE" &&
+      (!Number.isFinite(stopLossPrice) || stopLossPrice <= 0))
+  )
+    return { ...empty, error: "Stop distance must be greater than zero." };
+  const contract = instrument.category === "COMMODITY" ? 100 : 100000;
+  // All supported instruments have USD as base or quote. Account currency is USD.
+  const pipValuePerLot =
+    (contract * pip) / (instrument.base === "USD" ? price : 1);
+  const riskAmount = (balance * riskPercent) / 100;
+  const rawLots = riskAmount / (distance * pipValuePerLot);
+  const lotSize = Math.floor(rawLots * 100) / 100;
+  const units = lotSize * contract;
+  const estimatedMargin =
+    (units * (instrument.base === "USD" ? 1 : price)) / leverage;
+  if (lotSize < 0.01)
+    return {
+      ...empty,
+      riskAmount,
+      error: "The minimum 0.01 lot would exceed your risk budget.",
+    };
+  if (estimatedMargin > balance)
+    return {
+      ...empty,
+      riskAmount,
+      error: "Required margin exceeds the configured account balance.",
+    };
   return {
     riskAmount,
     lotSize,
-    miniLots,
-    microLots,
+    miniLots: lotSize * 10,
+    microLots: lotSize * 100,
     units,
-    effectiveSlPips,
+    effectiveSlPips: distance,
     pipValuePerLot,
     estimatedMargin,
+    actualRiskAmount: lotSize * distance * pipValuePerLot,
   };
 }
 
@@ -125,29 +157,46 @@ export function calculatePositionSize(params: PositionSizeParams): PositionSizeR
 export function calculatePortfolioExposure(
   setups: TradingSetup[],
   settings: UserSettings,
-  balance: number
+  balance: number,
 ): PortfolioRiskSummary {
   const active = setups.filter(
-    (s) => s.status === "WAITING_FOR_CONFIRMATION" || s.status === "ENTRY_TRIGGERED"
+    (s) =>
+      s.status === "WAITING_FOR_CONFIRMATION" || s.status === "ENTRY_TRIGGERED",
   );
 
   const openSetupsCount = active.length;
   const maxOpenSetups = settings.maxOpenSetups;
-  const capacityPercent = Math.min(100, Math.round((openSetupsCount / maxOpenSetups) * 100));
+  const capacityPercent = Math.min(
+    100,
+    Math.round((openSetupsCount / maxOpenSetups) * 100),
+  );
 
-  const totalRiskPercent = Number((openSetupsCount * settings.riskPerTradePercent).toFixed(2));
-  const totalRiskAmount = Number((balance * (totalRiskPercent / 100)).toFixed(2));
+  const totalRiskPercent = Number(
+    active
+      .reduce(
+        (sum, setup) =>
+          sum + (setup.riskPercent ?? settings.riskPerTradePercent),
+        0,
+      )
+      .toFixed(2),
+  );
+  const totalRiskAmount = Number(
+    (balance * (totalRiskPercent / 100)).toFixed(2),
+  );
 
   // Currency Net Exposure Map
-  const currencyScores: Record<string, { net: number; symbols: Set<string> }> = {};
+  const currencyScores: Record<string, { net: number; symbols: Set<string> }> =
+    {};
 
   for (const s of active) {
     const inst = INSTRUMENTS.find((i) => i.symbol === s.symbol);
     const base = inst?.base ?? s.symbol.slice(0, 3);
     const quote = inst?.quote ?? s.symbol.slice(3, 6);
 
-    if (!currencyScores[base]) currencyScores[base] = { net: 0, symbols: new Set() };
-    if (!currencyScores[quote]) currencyScores[quote] = { net: 0, symbols: new Set() };
+    if (!currencyScores[base])
+      currencyScores[base] = { net: 0, symbols: new Set() };
+    if (!currencyScores[quote])
+      currencyScores[quote] = { net: 0, symbols: new Set() };
 
     currencyScores[base].symbols.add(s.symbol);
     currencyScores[quote].symbols.add(s.symbol);
@@ -161,7 +210,9 @@ export function calculatePortfolioExposure(
     }
   }
 
-  const currencyExposures: CurrencyNetExposure[] = Object.entries(currencyScores)
+  const currencyExposures: CurrencyNetExposure[] = Object.entries(
+    currencyScores,
+  )
     .filter(([, data]) => data.symbols.size > 0)
     .map(([currency, data]) => {
       let netDirection: "LONG" | "SHORT" | "NEUTRAL" = "NEUTRAL";
@@ -183,7 +234,7 @@ export function calculatePortfolioExposure(
   for (const exp of currencyExposures) {
     if (Math.abs(exp.netScore) >= 2) {
       correlationWarnings.push(
-        `Correlated Exposure: ${Math.abs(exp.netScore)} setups are Net ${exp.netDirection} on ${exp.currency} (${exp.symbols.join(", ")}).`
+        `Correlated Exposure: ${Math.abs(exp.netScore)} setups are Net ${exp.netDirection} on ${exp.currency} (${exp.symbols.join(", ")}).`,
       );
     }
   }
@@ -202,13 +253,20 @@ export function calculatePortfolioExposure(
 /**
  * Calculates consecutive drawdown damage and required mathematical recovery gains.
  */
-export function calculateDrawdownTable(balance: number, riskPercent: number): DrawdownStep[] {
+export function calculateDrawdownTable(
+  balance: number,
+  riskPercent: number,
+): DrawdownStep[] {
   const steps = [1, 2, 3, 5, 8, 10];
 
   return steps.map((losses) => {
     const remaining = balance * Math.pow(1 - riskPercent / 100, losses);
-    const drawdownPercent = Number((((balance - remaining) / balance) * 100).toFixed(2));
-    const requiredRecoveryPercent = Number((((balance - remaining) / remaining) * 100).toFixed(2));
+    const drawdownPercent = Number(
+      (((balance - remaining) / balance) * 100).toFixed(2),
+    );
+    const requiredRecoveryPercent = Number(
+      (((balance - remaining) / remaining) * 100).toFixed(2),
+    );
 
     return {
       losses,

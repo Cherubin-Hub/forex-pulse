@@ -16,7 +16,7 @@ function createMockQuote(
   symbol: string,
   price: number,
   previousClose: number,
-  bias: MarketBias
+  bias: MarketBias,
 ): PriceQuote {
   const spread = Math.abs(price - previousClose);
   return {
@@ -28,19 +28,19 @@ function createMockQuote(
     bias,
     sparkline: buildSparkline(previousClose, price),
     timestamp: new Date().toISOString(),
-    source: "Institutional Feed",
+    source: "Demo dataset",
     delayMinutes: 0,
-    status: "LIVE",
+    status: "MOCK",
   };
 }
 
 export const MOCK_QUOTES: PriceQuote[] = [
-  createMockQuote("EURUSD", 1.12452, 1.12710, "BEARISH"),
-  createMockQuote("GBPUSD", 1.31874, 1.31620, "BULLISH"),
+  createMockQuote("EURUSD", 1.12452, 1.1271, "BEARISH"),
+  createMockQuote("GBPUSD", 1.31874, 1.3162, "BULLISH"),
   createMockQuote("USDJPY", 149.382, 148.915, "BULLISH"),
-  createMockQuote("AUDUSD", 0.66215, 0.66390, "BEARISH"),
+  createMockQuote("AUDUSD", 0.66215, 0.6639, "BEARISH"),
   createMockQuote("NZDUSD", 0.60148, 0.60122, "NEUTRAL"),
-  createMockQuote("USDCAD", 1.36540, 1.36310, "BULLISH"),
-  createMockQuote("USDCHF", 0.88175, 0.88290, "BEARISH"),
-  createMockQuote("XAUUSD", 2652.40, 2638.15, "BULLISH"),
+  createMockQuote("USDCAD", 1.3654, 1.3631, "BULLISH"),
+  createMockQuote("USDCHF", 0.88175, 0.8829, "BEARISH"),
+  createMockQuote("XAUUSD", 2652.4, 2638.15, "BULLISH"),
 ];

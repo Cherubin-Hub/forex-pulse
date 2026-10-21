@@ -1,48 +1,38 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createServerSupabaseClient } from "@/lib/supabase/server";
-
-export const dynamic = "force-dynamic";
-
-/**
- * Federated Single Sign-Out (Global Logout) Endpoint for Forex Pulse.
- * Clears the fp_gateway_session cookie and redirects back to Pulse Gateway.
- */
+import { gatewayBaseUrl } from "@/lib/redirects";
 export async function GET(request: NextRequest) {
-  const returnTo = request.nextUrl.searchParams.get("returnTo") || "http://localhost:3000/login";
-
-  let destination = "http://localhost:3000/login";
+  const gateway = gatewayBaseUrl();
+  const fallback = gateway
+    ? new URL("/login", gateway)
+    : new URL("/login", request.url);
+  let destination = fallback;
   try {
-    const url = new URL(returnTo);
-    destination = url.toString();
+    const proposed = new URL(
+      request.nextUrl.searchParams.get("returnTo") ?? fallback.href,
+      fallback,
+    );
+    if (
+      proposed.origin === fallback.origin &&
+      ["https:", "http:"].includes(proposed.protocol) &&
+      !proposed.username &&
+      !proposed.password
+    )
+      destination = proposed;
   } catch {
-    destination = "http://localhost:3000/login";
+    /* Use the configured Gateway login. */
   }
-
-  const response = NextResponse.redirect(destination);
-
-  // Expire and clear the Forex Pulse gateway session cookie
-  response.cookies.delete("fp_gateway_session");
+  const response = NextResponse.redirect(destination, 303);
   response.cookies.set({
     name: "fp_gateway_session",
     value: "",
     path: "/",
-    expires: new Date(0),
-    maxAge: 0,
     httpOnly: true,
+    maxAge: 0,
     sameSite: "lax",
     secure: process.env.NODE_ENV === "production",
   });
-
-  try {
-    const supabase = await createServerSupabaseClient();
-    await supabase.auth.signOut();
-  } catch {
-    // Continue even if local Supabase signOut is already clear
-  }
-
   return response;
 }
-
 export async function POST(request: NextRequest) {
   return GET(request);
 }

@@ -1,5 +1,8 @@
 import { settingsSchema, type UserSettings } from "@/lib/schemas/settings";
-import { DEFAULT_SETTINGS, SETTINGS_STORAGE_KEY } from "@/lib/constants/settings";
+import {
+  DEFAULT_SETTINGS,
+  SETTINGS_STORAGE_KEY,
+} from "@/lib/constants/settings";
 
 function getStorageKey(userId?: string | null): string {
   return userId ? `${SETTINGS_STORAGE_KEY}_${userId}` : SETTINGS_STORAGE_KEY;
@@ -15,19 +18,36 @@ export function loadSettings(userId?: string | null): UserSettings {
     const raw = window.localStorage.getItem(getStorageKey(userId));
     if (!raw) return DEFAULT_SETTINGS;
 
-    const result = settingsSchema.safeParse(JSON.parse(raw));
+    const result = settingsSchema.safeParse({
+      ...DEFAULT_SETTINGS,
+      ...JSON.parse(raw),
+    });
     return result.success ? result.data : DEFAULT_SETTINGS;
   } catch {
     return DEFAULT_SETTINGS;
   }
 }
 
-export function saveSettings(settings: UserSettings, userId?: string | null): void {
+export function saveSettings(
+  settings: UserSettings,
+  userId?: string | null,
+): void {
   if (typeof window === "undefined") return;
-  window.localStorage.setItem(getStorageKey(userId), JSON.stringify(settings));
+  try {
+    window.localStorage.setItem(
+      getStorageKey(userId),
+      JSON.stringify(settings),
+    );
+  } catch {
+    /* Cloud persistence remains authoritative when browser storage is unavailable. */
+  }
 }
 
 export function clearSettings(userId?: string | null): void {
   if (typeof window === "undefined") return;
-  window.localStorage.removeItem(getStorageKey(userId));
+  try {
+    window.localStorage.removeItem(getStorageKey(userId));
+  } catch {
+    /* Storage may be unavailable in private browsing. */
+  }
 }

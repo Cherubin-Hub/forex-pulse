@@ -1,20 +1,11 @@
 "use client";
 
 import { useState, useMemo } from "react";
-import {
-  ShieldAlert,
-  AlertTriangle,
-  Lock,
-  Unlock,
-  HeartPulse,
-} from "lucide-react";
+import { ShieldAlert, AlertTriangle, Lock, HeartPulse } from "lucide-react";
 import { useSettings } from "@/hooks/useSettings";
 import { useNow } from "@/hooks/useNow";
 import type { TradingSetup } from "@/types/setup";
-import {
-  evaluateCircuitBreaker,
-  clearManualTiltLockout,
-} from "@/lib/circuitBreakerUtils";
+import { evaluateCircuitBreaker } from "@/lib/circuitBreakerUtils";
 import { TiltEmergencyModal } from "@/components/risk/TiltEmergencyModal";
 
 interface CircuitBreakerBannerProps {
@@ -51,10 +42,13 @@ export function CircuitBreakerBanner({ setups }: CircuitBreakerBannerProps) {
               Intraday Risk Status:
             </span>
             <span className="font-mono text-[11px] font-bold text-foreground">
-              {metrics.todayRealizedR >= 0 ? `+${metrics.todayRealizedR}R` : `${metrics.todayRealizedR}R`}
+              {metrics.todayRealizedR >= 0
+                ? `+${metrics.todayRealizedR}R`
+                : `${metrics.todayRealizedR}R`}
             </span>
             <span className="text-[11px] text-muted-foreground hidden sm:inline">
-              ({metrics.todayWinCount}W / {metrics.todayLossCount}L) • Budget: {metrics.remainingRiskBudgetR}R Available
+              ({metrics.todayWinCount}W / {metrics.todayLossCount}L) • Budget:{" "}
+              {metrics.remainingRiskBudgetR}R Available
             </span>
           </div>
 
@@ -122,22 +116,16 @@ export function CircuitBreakerBanner({ setups }: CircuitBreakerBannerProps) {
             <span className="font-extrabold uppercase tracking-wide">
               Circuit Breaker Engaged:
             </span>{" "}
-            <span className="font-medium text-foreground">{metrics.lockoutReason}</span>
+            <span className="font-medium text-foreground">
+              {metrics.lockoutReason}
+            </span>
           </div>
         </div>
 
         {metrics.isManualLockout && (
-          <button
-            type="button"
-            onClick={() => {
-              clearManualTiltLockout();
-              setRefreshKey((k) => k + 1);
-            }}
-            className="ml-2 inline-flex items-center gap-1 shrink-0 rounded bg-background border border-border px-2 py-1 text-[11px] font-semibold text-muted-foreground hover:text-foreground transition-colors"
-          >
-            <Unlock className="h-3 w-3" />
-            <span>Unlock</span>
-          </button>
+          <span className="text-xs">
+            Self-exclusion remains active until its saved expiry.
+          </span>
         )}
       </div>
 

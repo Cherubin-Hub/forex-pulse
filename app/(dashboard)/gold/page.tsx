@@ -15,10 +15,18 @@ export default async function GoldPage() {
   ]);
 
   const goldQuote = quotes.find((q) => q.symbol === "XAUUSD") ?? null;
-  const changeObj = goldQuote ? calculateChange(goldQuote.price, goldQuote.previousClose) : null;
+  const changeObj = goldQuote
+    ? calculateChange(goldQuote.price, goldQuote.previousClose)
+    : null;
 
   return (
     <div className="space-y-8">
+      {(drivers.length === 0 || levels.length === 0) && (
+        <p role="status" className="text-sm text-muted-foreground">
+          Some verified gold drivers or key levels are unavailable or stale. No
+          substitute levels are generated.
+        </p>
+      )}
       {/* Header section with live price badge */}
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 border-b border-border pb-4">
         <div>
@@ -27,14 +35,17 @@ export default async function GoldPage() {
             <span className="text-amber-500">Gold (XAU/USD)</span> Analysis Hub
           </h2>
           <p className="text-sm text-muted-foreground mt-1">
-            Macro drivers, real yields correlation, key market structure, and live candlestick charting.
+            Macro drivers, real yields correlation, key market structure, and
+            live candlestick charting.
           </p>
         </div>
 
         {goldQuote && goldQuote.price !== null && (
           <div className="flex items-center gap-3 rounded-xl border border-border bg-card px-4 py-2.5 shadow-sm">
             <div>
-              <p className="text-[11px] text-muted-foreground font-medium">Spot Price (USD)</p>
+              <p className="text-[11px] text-muted-foreground font-medium">
+                Spot Price (USD)
+              </p>
               <p className="text-xl font-bold tabular-nums tracking-tight">
                 ${formatPrice(goldQuote.price, 2)}
               </p>
@@ -69,7 +80,8 @@ export default async function GoldPage() {
         <div>
           <h3 className="text-base font-semibold">Macroeconomic Drivers</h3>
           <p className="text-xs text-muted-foreground">
-            Fundamental forces governing long-term institutional demand and gold price trajectory.
+            Fundamental forces governing long-term institutional demand and gold
+            price trajectory.
           </p>
         </div>
         <GoldDrivers drivers={drivers} />

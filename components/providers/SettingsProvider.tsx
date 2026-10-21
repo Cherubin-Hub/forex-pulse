@@ -1,94 +1,120 @@
 "use client";
-
-import { createContext, useContext, useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
+import {
+  createContext,
+  useContext,
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+  type ReactNode,
+} from "react";
+import { toast } from "sonner";
+import type { PublicIdentity } from "@/types/auth";
 import type { UserSettings } from "@/lib/schemas/settings";
 import { DEFAULT_SETTINGS } from "@/lib/constants/settings";
-import { clearSettings, loadSettings, saveSettings } from "@/lib/storage/settingsStorage";
-import { fetchCloudSettings, saveCloudSettings } from "@/app/actions/settingsActions";
+import { loadSettings, saveSettings } from "@/lib/storage/settingsStorage";
+import {
+  fetchCloudSettings,
+  saveCloudSettings,
+} from "@/app/actions/settingsActions";
 
 export type SettingsContextValue = {
   settings: UserSettings;
+  identity: PublicIdentity | null;
   isLoaded: boolean;
-  updateSettings: (next: UserSettings) => void;
-  resetSettings: () => void;
+  updateSettings: (next: UserSettings) => Promise<boolean>;
+  resetSettings: () => Promise<boolean>;
 };
-
 export const SettingsContext = createContext<SettingsContextValue | null>(null);
 
-function parseUserIdFromCookie(): string | null {
-  if (typeof document === "undefined") return null;
-  try {
-    const cookies = document.cookie.split("; ");
-    const sessionCookie = cookies.find((c) => c.startsWith("fp_gateway_session="));
-    if (!sessionCookie) return null;
-
-    const rawValue = decodeURIComponent(sessionCookie.split("=")[1] || "");
-    let jsonStr = "";
-    if (rawValue.includes(".")) {
-      const base64Url = rawValue.split(".")[0];
-      const base64 = base64Url.replace(/-/g, "+").replace(/_/g, "/");
-      jsonStr = atob(base64);
-    } else {
-      jsonStr = rawValue;
-    }
-    const data = JSON.parse(jsonStr) as { userId?: string };
-    return data.userId ?? null;
-  } catch {
-    return null;
-  }
-}
-
-export function SettingsProvider({ children }: { children: ReactNode }) {
+export function SettingsProvider({
+  children,
+  identity,
+}: {
+  children: ReactNode;
+  identity: PublicIdentity | null;
+}) {
   const [settings, setSettings] = useState<UserSettings>(DEFAULT_SETTINGS);
   const [isLoaded, setIsLoaded] = useState(false);
-  const [userId, setUserId] = useState<string | null>(null);
-
+  const userId = identity?.userId;
   useEffect(() => {
-    const currentUserId = parseUserIdFromCookie();
+    let cancelled = false;
     // eslint-disable-next-line react-hooks/set-state-in-effect -- Hydration match pattern
-    setUserId(currentUserId);
-
-    // 1. Instant local load for hydration matching, scoped by user ID
-    const local = loadSettings(currentUserId);
-    setSettings(local);
-    setIsLoaded(true);
-
-    // 2. Background cloud pull to keep in sync with Supabase for this specific user
-    fetchCloudSettings().then((result) => {
-      if (result.success && result.data) {
-        setSettings((prev) => {
-          const merged = { ...prev, ...result.data };
-          saveSettings(merged, currentUserId); // Cache merged cloud settings locally for this user
-          return merged;
-        });
+    setSettings(userId ? loadSettings(userId) : DEFAULT_SETTINGS);
+    setIsLoaded(false);
+    if (!userId) {
+      setIsLoaded(true);
+      return;
+    }
+    fetchCloudSettings()
+      .then((result) => {
+        if (cancelled) return;
+        if (result.success && result.data) {
+          setSettings(result.data);
+          saveSettings(result.data, userId);
+        } else {
+          toast.error(
+            result.error ?? "Cloud settings unavailable. Automation is paused.",
+          );
+          setSettings((previous) => ({
+            ...previous,
+            automationEnabled: false,
+          }));
+        }
+        setIsLoaded(true);
+      })
+      .catch(() => {
+        if (cancelled) return;
+        setSettings((previous) => ({ ...previous, automationEnabled: false }));
+        setIsLoaded(true);
+        toast.error(
+          "Cloud settings could not be reached. Automation is paused.",
+        );
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [userId]);
+  const updateSettings = useCallback(
+    async (next: UserSettings): Promise<boolean> => {
+      if (!userId) {
+        toast.error("Please sign in to save settings.");
+        return false;
       }
-    });
-  }, []);
-
-  const updateSettings = useCallback((next: UserSettings) => {
-    setSettings(next);
-    saveSettings(next, userId); // Local write scoped to user
-    saveCloudSettings(next); // Cloud write scoped to user
-  }, [userId]);
-
-  const resetSettings = useCallback(() => {
-    clearSettings(userId);
-    setSettings(DEFAULT_SETTINGS);
-    saveCloudSettings(DEFAULT_SETTINGS);
-  }, [userId]);
-
-  const value = useMemo(
-    () => ({ settings, isLoaded, updateSettings, resetSettings }),
-    [settings, isLoaded, updateSettings, resetSettings]
+      let result;
+      try {
+        result = await saveCloudSettings(next);
+      } catch {
+        toast.error("Settings were not saved. Check your connection.");
+        return false;
+      }
+      if (!result.success) {
+        toast.error(result.error ?? "Settings were not saved.");
+        return false;
+      }
+      setSettings(next);
+      saveSettings(next, userId);
+      return true;
+    },
+    [userId],
   );
-
-  return <SettingsContext.Provider value={value}>{children}</SettingsContext.Provider>;
+  const resetSettings = useCallback(
+    () => updateSettings(DEFAULT_SETTINGS),
+    [updateSettings],
+  );
+  const value = useMemo(
+    () => ({ settings, identity, isLoaded, updateSettings, resetSettings }),
+    [settings, identity, isLoaded, updateSettings, resetSettings],
+  );
+  return (
+    <SettingsContext.Provider value={value}>
+      {children}
+    </SettingsContext.Provider>
+  );
 }
-
 export function useSettings() {
   const context = useContext(SettingsContext);
-  if (!context) {
+  if (!context)
     throw new Error("useSettings must be used within a SettingsProvider");
-  }
   return context;
 }

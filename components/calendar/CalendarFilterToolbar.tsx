@@ -38,7 +38,7 @@ export function CalendarFilterToolbar({
       const res = await syncEconomicCalendarAction();
       if (res.success) {
         toast.success("Macro Releases Synchronized", {
-          description: res.message || "All past catalysts updated with institutional actuals.",
+          description: res.message || "Verified calendar snapshot refreshed.",
         });
       } else {
         toast.error("Sync Failed", { description: res.error });
@@ -103,7 +103,9 @@ export function CalendarFilterToolbar({
             className="h-8 px-2.5 text-xs font-medium gap-1.5 shrink-0"
             title="Synchronize and re-evaluate released catalysts"
           >
-            <RefreshCw className={`h-3.5 w-3.5 ${isSyncing ? "animate-spin text-primary" : "text-muted-foreground"}`} />
+            <RefreshCw
+              className={`h-3.5 w-3.5 ${isSyncing ? "animate-spin text-primary" : "text-muted-foreground"}`}
+            />
             <span className="hidden sm:inline">Sync Actuals</span>
           </Button>
         </div>
@@ -111,7 +113,9 @@ export function CalendarFilterToolbar({
 
       {/* Currency Filter Pills */}
       <div className="flex flex-wrap items-center gap-1 pt-2 border-t border-border/50">
-        <span className="text-[11px] font-medium text-muted-foreground mr-1">Currency:</span>
+        <span className="text-[11px] font-medium text-muted-foreground mr-1">
+          Currency:
+        </span>
         {CURRENCIES.map((curr) => {
           const isSelected = selectedCurrency === curr;
           return (

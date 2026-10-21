@@ -5,15 +5,14 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Activity, ChevronsLeft, Layers } from "lucide-react";
 import { SidebarNav } from "@/components/layout/SidebarNav";
 import { cn } from "@/lib/utils";
-import { normalizeBaseUrl } from "@/lib/sso/session";
+import { gatewayBaseUrl } from "@/lib/redirects";
 
 const EXPANDED_WIDTH = 248;
 const COLLAPSED_WIDTH = 72;
 
 export function Sidebar() {
   const [isCollapsed, setIsCollapsed] = useState(false);
-  const rawGatewayUrl = process.env.NEXT_PUBLIC_GATEWAY_URL || "http://localhost:3000";
-  const gatewayUrl = normalizeBaseUrl(rawGatewayUrl, "http://localhost:3000");
+  const gatewayUrl = gatewayBaseUrl();
 
   return (
     <motion.aside
@@ -48,12 +47,14 @@ export function Sidebar() {
       {/* Return to Pulse Gateway Hub */}
       <div className="border-t border-border p-2">
         <a
-          href={`${gatewayUrl}/portal`}
+          href={gatewayUrl ? `${gatewayUrl}/portal` : "/settings"}
           title={isCollapsed ? "Pulse Gateway Hub" : undefined}
           className="flex h-9 w-full items-center gap-3 rounded-md px-3 text-sm text-muted-foreground transition-colors hover:bg-sidebar-accent hover:text-emerald-500"
         >
           <Layers className="h-4 w-4 shrink-0 text-emerald-500" />
-          {!isCollapsed && <span className="whitespace-nowrap font-medium">Pulse Gateway</span>}
+          {!isCollapsed && (
+            <span className="whitespace-nowrap font-medium">Pulse Gateway</span>
+          )}
         </a>
       </div>
 
@@ -66,7 +67,7 @@ export function Sidebar() {
           <ChevronsLeft
             className={cn(
               "h-4 w-4 shrink-0 transition-transform duration-300",
-              isCollapsed && "rotate-180"
+              isCollapsed && "rotate-180",
             )}
           />
           {!isCollapsed && <span className="whitespace-nowrap">Collapse</span>}

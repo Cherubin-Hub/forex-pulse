@@ -1,246 +1,178 @@
 "use server";
-
 import { revalidatePath } from "next/cache";
+import { requireUserId, getAuthenticatedUser } from "@/lib/auth/user";
+import { ensureGatewayIdentity } from "@/lib/services/gatewayIdentity";
 import { createAdminClient } from "@/lib/supabase/admin";
+import {
+  createSetupForUser,
+  getOwnedSetup,
+  setupPayload,
+  assertEntryAllowed,
+  resolveSetupForUser,
+} from "@/lib/services/trading";
+import { mapRowToSetup } from "@/lib/supabase/mappers";
+import { getQuote } from "@/lib/services/marketData";
+import { isVerifiedQuote } from "@/lib/marketQuality";
+import type { CreateSetupFormData } from "@/lib/schemas/setup";
 import type { SetupStatus } from "@/types/setup";
-import { createSetupSchema, type CreateSetupFormData } from "@/lib/schemas/setup";
-import { calculateRiskReward } from "@/lib/setupUtils";
-import { getAuthenticatedUserId } from "@/lib/auth/user";
-
-export interface UpdateStatusResult {
-  success: boolean;
-  error?: string;
+export type { UpdateStatusResult } from "@/types/action";
+import type { UpdateStatusResult } from "@/types/action";
+function refresh() {
+  revalidatePath("/", "layout");
 }
-
-/**
- * Server Action to update the lifecycle status of an existing trading setup.
- * Uses createAdminClient to ensure automated trade engines and client actions succeed.
- */
+function failure(error: unknown): UpdateStatusResult {
+  return {
+    success: false,
+    error: error instanceof Error ? error.message : "Setup operation failed",
+  };
+}
+export async function createTradingSetup(
+  input: CreateSetupFormData,
+): Promise<UpdateStatusResult> {
+  try {
+    const user = await getAuthenticatedUser();
+    if (!user) throw new Error("Unauthorized");
+    await ensureGatewayIdentity(user);
+    await createSetupForUser(user.userId, input);
+    refresh();
+    return { success: true };
+  } catch (error: unknown) {
+    return failure(error);
+  }
+}
 export async function updateSetupStatus(
   setupId: string,
-  newStatus: SetupStatus
+  status: SetupStatus,
 ): Promise<UpdateStatusResult> {
   try {
-    const supabase = createAdminClient();
-
-    const { error } = await supabase
-      .from("trading_setups")
-      .update({
-        status: newStatus,
-        updated_at: new Date().toISOString(),
-      })
-      .eq("id", setupId);
-
-    if (error) {
-      console.error("Failed to update setup status:", error.message);
-      return { success: false, error: error.message };
-    }
-
-    revalidatePath("/setups");
-    revalidatePath("/setups/history");
-    revalidatePath("/");
-
-    return { success: true };
-  } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : "Unknown error";
-    return { success: false, error: message };
-  }
-}
-
-/**
- * Server Action to create and persist a new trading setup in Supabase.
- * Invoked by manual creation modal and automated market scanner.
- */
-export async function createTradingSetup(
-  formData: CreateSetupFormData
-): Promise<UpdateStatusResult> {
-  try {
-    const userId = await getAuthenticatedUserId();
-    if (!userId) {
-      return { success: false, error: "Unauthorized. Please log in to create setups." };
-    }
-
-    const validated = createSetupSchema.parse(formData);
-    const supabase = createAdminClient();
-
-    const avgEntry = (validated.entryMin + validated.entryMax) / 2;
-    const riskReward = calculateRiskReward(
-      validated.direction,
-      avgEntry,
-      validated.stopLoss,
-      validated.takeProfit1
+    const changed = await resolveSetupForUser(
+      await requireUserId(),
+      setupId,
+      status,
     );
-
-    const confluenceTags = validated.confluenceTags
-      ? validated.confluenceTags.split(",").map((t: string) => t.trim()).filter(Boolean)
-      : [];
-
-    const { error } = await supabase.from("trading_setups").insert({
-      user_id: userId,
-      symbol: validated.symbol,
-      direction: validated.direction,
-      entry_min: validated.entryMin,
-      entry_max: validated.entryMax,
-      stop_loss: validated.stopLoss,
-      take_profit_1: validated.takeProfit1,
-      take_profit_2: null,
-      risk_reward: riskReward,
-      status: "WAITING_FOR_CONFIRMATION",
-      invalidation_rule: validated.invalidationRule,
-      notes: validated.notes ?? null,
-      confluence_tags: confluenceTags,
-    });
-
-    if (error) {
-      console.error("Supabase setup creation error:", error.message);
-      return { success: false, error: error.message };
-    }
-
-    revalidatePath("/setups");
-    revalidatePath("/");
-
+    if (!changed)
+      throw new Error(
+        "No verified market transition is available. Refresh the setup.",
+      );
+    refresh();
     return { success: true };
-  } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : "Failed to create setup";
-    return { success: false, error: message };
+  } catch (error: unknown) {
+    return failure(error);
   }
 }
-
-/**
- * Server Action to modify and update parameters of an existing trading setup.
- */
 export async function updateTradingSetup(
   setupId: string,
-  formData: CreateSetupFormData
+  input: CreateSetupFormData,
 ): Promise<UpdateStatusResult> {
   try {
-    const validated = createSetupSchema.parse(formData);
-    const supabase = createAdminClient();
-
-    const avgEntry = (validated.entryMin + validated.entryMax) / 2;
-    const riskReward = calculateRiskReward(
-      validated.direction,
-      avgEntry,
-      validated.stopLoss,
-      validated.takeProfit1
+    const userId = await requireUserId(),
+      row = await getOwnedSetup(userId, setupId);
+    if (row.status !== "WAITING_FOR_CONFIRMATION")
+      throw new Error("Only pending setups can be edited.");
+    const payload = setupPayload(input);
+    await assertEntryAllowed(
+      userId,
+      mapRowToSetup({
+        ...row,
+        ...payload,
+        confluence_tags: payload.confluence_tags ?? [],
+        notes: payload.notes ?? null,
+        take_profit_2: null,
+      }),
     );
-
-    const confluenceTags = validated.confluenceTags
-      ? validated.confluenceTags.split(",").map((t: string) => t.trim()).filter(Boolean)
-      : [];
-
-    const { error } = await supabase
+    const { data, error } = await createAdminClient()
       .from("trading_setups")
-      .update({
-        symbol: validated.symbol,
-        direction: validated.direction,
-        entry_min: validated.entryMin,
-        entry_max: validated.entryMax,
-        stop_loss: validated.stopLoss,
-        take_profit_1: validated.takeProfit1,
-        risk_reward: riskReward,
-        invalidation_rule: validated.invalidationRule,
-        notes: validated.notes ?? null,
-        confluence_tags: confluenceTags,
-        updated_at: new Date().toISOString(),
-      })
-      .eq("id", setupId);
-
-    if (error) {
-      console.error("Supabase setup update error:", error.message);
-      return { success: false, error: error.message };
-    }
-
-    revalidatePath("/setups");
-    revalidatePath("/setups/history");
-    revalidatePath("/");
-
-    return { success: true };
-  } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : "Failed to update setup";
-    return { success: false, error: message };
-  }
-}
-
-/**
- * Server Action to immediately trail an active trade's stop loss to Breakeven (entry midpoint).
- */
-export async function setSetupToBreakeven(
-  setupId: string
-): Promise<UpdateStatusResult> {
-  try {
-    const supabase = createAdminClient();
-
-    // 1. Fetch current setup to determine entry midpoint
-    const { data: setup, error: fetchError } = await supabase
-      .from("trading_setups")
-      .select("entry_min, entry_max, notes")
+      .update(payload)
       .eq("id", setupId)
-      .single();
-
-    if (fetchError || !setup) {
-      return { success: false, error: "Setup not found." };
-    }
-
-    const avgEntry = (Number(setup.entry_min) + Number(setup.entry_max)) / 2;
-    const updatedNotes = setup.notes 
-      ? `${setup.notes} [SL moved to Breakeven @ ${avgEntry}]`
-      : `[SL moved to Breakeven @ ${avgEntry}]`;
-
-    // 2. Persist Breakeven Stop Loss
-    const { error: updateError } = await supabase
-      .from("trading_setups")
-      .update({
-        stop_loss: avgEntry,
-        notes: updatedNotes,
-        updated_at: new Date().toISOString(),
-      })
-      .eq("id", setupId);
-
-    if (updateError) {
-      return { success: false, error: updateError.message };
-    }
-
-    revalidatePath("/setups");
-    revalidatePath("/setups/history");
-    revalidatePath("/");
-
+      .eq("user_id", userId)
+      .eq("status", "WAITING_FOR_CONFIRMATION")
+      .select("id")
+      .maybeSingle();
+    if (error || !data)
+      throw new Error(error?.message ?? "Setup changed. Please refresh.");
+    refresh();
     return { success: true };
-  } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : "Failed to set Breakeven";
-    return { success: false, error: message };
+  } catch (error: unknown) {
+    return failure(error);
+  }
+}
+export async function setSetupToBreakeven(
+  setupId: string,
+): Promise<UpdateStatusResult> {
+  try {
+    const userId = await requireUserId(),
+      row = await getOwnedSetup(userId, setupId);
+    if (row.status !== "ENTRY_TRIGGERED")
+      throw new Error("Only active trades can move to breakeven.");
+    const quote = await getQuote(row.symbol),
+      entry = (Number(row.entry_min) + Number(row.entry_max)) / 2;
+    const distance = Math.abs(
+      entry - Number(row.original_stop_loss ?? row.stop_loss),
+    );
+    if (
+      !isVerifiedQuote(quote) ||
+      distance <= 0 ||
+      (row.direction === "LONG" ? quote.price - entry : entry - quote.price) <
+        distance
+    )
+      throw new Error("A verified move of at least +1R is required.");
+    const { data, error } = await createAdminClient()
+      .from("trading_setups")
+      .update({ stop_loss: entry })
+      .eq("id", setupId)
+      .eq("user_id", userId)
+      .eq("status", "ENTRY_TRIGGERED")
+      .select("id")
+      .maybeSingle();
+    if (error || !data)
+      throw new Error(error?.message ?? "Setup changed. Please refresh.");
+    refresh();
+    return { success: true };
+  } catch (error: unknown) {
+    return failure(error);
+  }
+}
+export async function deleteTradingSetup(
+  setupId: string,
+): Promise<UpdateStatusResult> {
+  try {
+    const userId = await requireUserId();
+    const row = await getOwnedSetup(userId, setupId);
+    if (row.status !== "WAITING_FOR_CONFIRMATION")
+      throw new Error(
+        "Active and closed trades are retained to protect journal integrity.",
+      );
+    const { data, error } = await createAdminClient()
+      .from("trading_setups")
+      .delete()
+      .eq("id", setupId)
+      .eq("user_id", userId)
+      .eq("status", "WAITING_FOR_CONFIRMATION")
+      .select("id")
+      .maybeSingle();
+    if (error || !data)
+      throw new Error(error?.message ?? "Setup changed. Please refresh.");
+    refresh();
+    return { success: true };
+  } catch (error: unknown) {
+    return failure(error);
   }
 }
 
-/**
- * Server Action to delete a trading setup.
- */
-export async function deleteTradingSetup(
-  setupId: string
+export async function checkSetupMarketStatus(
+  setupId: string,
 ): Promise<UpdateStatusResult> {
   try {
-    const userId = await getAuthenticatedUserId();
-    const supabase = createAdminClient();
-
-    let query = supabase.from("trading_setups").delete().eq("id", setupId);
-    if (userId) {
-      query = query.eq("user_id", userId);
-    }
-
-    const { error } = await query;
-
-    if (error) {
-      console.error("Failed to delete setup:", error.message);
-      return { success: false, error: error.message };
-    }
-
-    revalidatePath("/setups");
-    revalidatePath("/setups/history");
-    revalidatePath("/");
-
+    const changed = await resolveSetupForUser(await requireUserId(), setupId);
+    if (!changed)
+      return {
+        success: false,
+        error:
+          "No status change is confirmed by the current verified market price.",
+      };
+    refresh();
     return { success: true };
-  } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : "Failed to delete setup";
-    return { success: false, error: message };
+  } catch (error: unknown) {
+    return failure(error);
   }
 }

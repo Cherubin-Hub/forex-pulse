@@ -11,9 +11,11 @@ import { INSTRUMENTS } from "@/lib/constants/instruments";
 import { NAV_SECTIONS } from "@/lib/constants/navigation";
 import type { TradingSetup } from "@/types/setup";
 
-export type CommandCategory = "ACTIONS" | "INSTRUMENTS" | "NAVIGATION" | "SETUPS";
+export type CommandCategory =
+  "ACTIONS" | "INSTRUMENTS" | "NAVIGATION" | "SETUPS";
 
-export type CommandActionKey = "LOG_SETUP" | "EXPORT_CSV" | "GENERATE_REPORT" | "TOGGLE_THEME";
+export type CommandActionKey =
+  "LOG_SETUP" | "EXPORT_CSV" | "GENERATE_REPORT" | "TOGGLE_THEME";
 
 export type CommandItem = {
   id: string;
@@ -30,7 +32,9 @@ export type CommandItem = {
 /**
  * Builds the searchable master catalog of terminal commands, navigation paths, and instruments.
  */
-export function buildMasterCommandList(setups: TradingSetup[] = []): CommandItem[] {
+export function buildMasterCommandList(
+  setups: TradingSetup[] = [],
+): CommandItem[] {
   const items: CommandItem[] = [];
 
   // 1. Quick Execution Actions
@@ -56,7 +60,7 @@ export function buildMasterCommandList(setups: TradingSetup[] = []): CommandItem
     },
     {
       id: "act-gen-report",
-      title: "Generate AI Session Report",
+      title: "Generate Session Report",
       subtitle: "Synthesize macro catalysts, sentiment, and playbooks",
       category: "ACTIONS",
       icon: FileText,
@@ -72,7 +76,7 @@ export function buildMasterCommandList(setups: TradingSetup[] = []): CommandItem
       icon: SunMoon,
       actionKey: "TOGGLE_THEME",
       keywords: ["theme", "dark", "light", "mode", "color"],
-    }
+    },
   );
 
   // 2. Core Instruments & Charts
@@ -85,7 +89,14 @@ export function buildMasterCommandList(setups: TradingSetup[] = []): CommandItem
       icon: TrendingUp,
       href: `/technical`,
       badge: inst.category,
-      keywords: [inst.symbol, inst.displayName, inst.base, inst.quote, "chart", "technical"],
+      keywords: [
+        inst.symbol,
+        inst.displayName,
+        inst.base,
+        inst.quote,
+        "chart",
+        "technical",
+      ],
     });
   }
 
@@ -126,19 +137,21 @@ export function buildMasterCommandList(setups: TradingSetup[] = []): CommandItem
  */
 export function searchCommands(
   items: CommandItem[],
-  query: string
+  query: string,
 ): Record<CommandCategory, CommandItem[]> {
   const cleanQuery = query.toLowerCase().trim();
 
-  const filtered = cleanQuery === ""
-    ? items
-    : items.filter((item) => {
-        return (
-          item.title.toLowerCase().includes(cleanQuery) ||
-          (item.subtitle && item.subtitle.toLowerCase().includes(cleanQuery)) ||
-          item.keywords.some((k) => k.toLowerCase().includes(cleanQuery))
-        );
-      });
+  const filtered =
+    cleanQuery === ""
+      ? items
+      : items.filter((item) => {
+          return (
+            item.title.toLowerCase().includes(cleanQuery) ||
+            (item.subtitle &&
+              item.subtitle.toLowerCase().includes(cleanQuery)) ||
+            item.keywords.some((k) => k.toLowerCase().includes(cleanQuery))
+          );
+        });
 
   const grouped: Record<CommandCategory, CommandItem[]> = {
     ACTIONS: [],

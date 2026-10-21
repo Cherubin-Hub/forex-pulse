@@ -1,3 +1,4 @@
+import "server-only";
 import { cookies } from "next/headers";
 import { verifySessionToken, type GatewaySessionData } from "@/lib/sso/session";
 
@@ -29,4 +30,11 @@ export async function getAuthenticatedUser(): Promise<GatewaySessionData | null>
 export async function getAuthenticatedUserId(): Promise<string | null> {
   const user = await getAuthenticatedUser();
   return user?.userId ?? null;
+}
+
+export async function requireUserId(): Promise<string> {
+  const userId = await getAuthenticatedUserId();
+  if (!userId)
+    throw new Error("Unauthorized. Please sign in through Pulse Gateway.");
+  return userId;
 }

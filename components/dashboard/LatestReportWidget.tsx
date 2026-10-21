@@ -19,7 +19,10 @@ export function LatestReportWidget({ report }: LatestReportWidgetProps) {
         <p className="text-xs font-medium">No session reports generated yet.</p>
         <Link
           href="/reports"
-          className={cn(buttonVariants({ size: "sm", variant: "outline" }), "text-xs h-7")}
+          className={cn(
+            buttonVariants({ size: "sm", variant: "outline" }),
+            "text-xs h-7",
+          )}
         >
           Generate Report
         </Link>
@@ -33,7 +36,7 @@ export function LatestReportWidget({ report }: LatestReportWidgetProps) {
         <div className="flex items-center gap-2">
           <FileText className="h-4 w-4 text-primary" />
           <h4 className="font-semibold text-xs uppercase tracking-wider">
-            Latest AI Intelligence Dispatch
+            Latest Market Briefing
           </h4>
         </div>
         <span className="text-[10px] text-muted-foreground font-mono">
@@ -43,7 +46,9 @@ export function LatestReportWidget({ report }: LatestReportWidgetProps) {
 
       <div>
         <div className="flex items-center gap-2 mb-1">
-          <span className="text-xs font-bold text-foreground">{report.title}</span>
+          <span className="text-xs font-bold text-foreground">
+            {report.title}
+          </span>
           <span className="rounded bg-primary/10 px-1.5 py-0.2 text-[10px] font-semibold text-primary">
             {report.bias}
           </span>
@@ -58,7 +63,10 @@ export function LatestReportWidget({ report }: LatestReportWidgetProps) {
         <div className="flex items-center gap-1">
           <span className="text-[10px] text-muted-foreground">Focus:</span>
           {report.playbook.focusPairs.map((p) => (
-            <span key={p} className="rounded bg-muted px-1.5 py-0.2 text-[10px] font-mono font-medium">
+            <span
+              key={p}
+              className="rounded bg-muted px-1.5 py-0.2 text-[10px] font-mono font-medium"
+            >
               {p}
             </span>
           ))}

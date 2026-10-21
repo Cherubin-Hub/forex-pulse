@@ -14,10 +14,15 @@ interface LiveStreamingTickerTapeProps {
   initialQuotes?: PriceQuote[];
 }
 
-export function LiveStreamingTickerTape({ initialQuotes: _initialQuotes }: LiveStreamingTickerTapeProps) {
-  const { quotes, isStreaming, setIsStreaming } = useLiveMarket();
+export function LiveStreamingTickerTape({
+  initialQuotes: _initialQuotes,
+}: LiveStreamingTickerTapeProps) {
+  void _initialQuotes;
+  const { quotes, isStreaming, setIsStreaming, feedSource } = useLiveMarket();
   const [prevPrices, setPrevPrices] = useState<Record<string, number>>({});
-  const [flashingSymbols, setFlashingSymbols] = useState<Record<string, "UP" | "DOWN">>({});
+  const [flashingSymbols, setFlashingSymbols] = useState<
+    Record<string, "UP" | "DOWN">
+  >({});
   const [isHovered, setIsHovered] = useState(false);
   const prevQuotesRef = useRef<Map<string, number>>(new Map());
 
@@ -58,11 +63,25 @@ export function LiveStreamingTickerTape({ initialQuotes: _initialQuotes }: LiveS
       {/* Institutional Live Feed Status Badge */}
       <div className="z-10 flex h-full items-center gap-1.5 border-r border-border bg-card px-3 shrink-0 shadow-sm">
         <span className="relative flex h-2 w-2">
-          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
-          <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
+          <span
+            className={cn(
+              "animate-ping absolute inline-flex h-full w-full rounded-full opacity-75",
+              feedSource === "FINNHUB_REST" ? "bg-emerald-400" : "bg-amber-400",
+            )}
+          />
+          <span
+            className={cn(
+              "relative inline-flex rounded-full h-2 w-2",
+              feedSource === "FINNHUB_REST" ? "bg-emerald-500" : "bg-amber-500",
+            )}
+          />
         </span>
         <span className="font-mono text-[10px] font-bold tracking-wider text-muted-foreground uppercase">
-          LIVE TAPE
+          {feedSource === "SIMULATED"
+            ? "DEMO TAPE"
+            : feedSource === "UNAVAILABLE"
+              ? "FEED UNAVAILABLE"
+              : "VERIFIED FEED"}
         </span>
         <button
           type="button"
@@ -70,7 +89,11 @@ export function LiveStreamingTickerTape({ initialQuotes: _initialQuotes }: LiveS
           className="ml-1 text-muted-foreground hover:text-foreground transition-colors"
           title={isStreaming ? "Pause Live Stream" : "Resume Live Stream"}
         >
-          {!isStreaming ? <Play className="h-3 w-3 text-amber-500" /> : <Pause className="h-3 w-3" />}
+          {!isStreaming ? (
+            <Play className="h-3 w-3 text-amber-500" />
+          ) : (
+            <Pause className="h-3 w-3" />
+          )}
         </button>
       </div>
 
@@ -88,45 +111,53 @@ export function LiveStreamingTickerTape({ initialQuotes: _initialQuotes }: LiveS
         }}
       >
         {/* Render items duplicated to produce infinite continuous flow */}
-        {[...tickerItems, ...tickerItems].map((item: TickerItemData, index: number) => {
-          const flash = flashingSymbols[item.symbol];
-          const isUp = item.changePips >= 0;
+        {[...tickerItems, ...tickerItems].map(
+          (item: TickerItemData, index: number) => {
+            const flash = flashingSymbols[item.symbol];
+            const isUp = item.changePips >= 0;
 
-          return (
-            <Link
-              key={`${item.symbol}-${index}`}
-              href={`/markets?symbol=${item.symbol}`}
-              className={cn(
-                "inline-flex items-center gap-2 rounded px-2 py-0.5 transition-all hover:bg-muted/50 cursor-pointer shrink-0",
-                flash === "UP" && "bg-emerald-500/20 text-emerald-400",
-                flash === "DOWN" && "bg-rose-500/20 text-rose-400"
-              )}
-            >
-              <span className="font-mono font-bold text-foreground">{item.displayName}</span>
-
-              {/* Price with flash indicators */}
-              <span className="font-mono text-[11px] text-foreground font-semibold">
-                {formatPrice(item.price, item.decimals)}
-              </span>
-
-              {/* Pip & Percentage Change */}
-              <span
+            return (
+              <Link
+                key={`${item.symbol}-${index}`}
+                href={`/markets?symbol=${item.symbol}`}
                 className={cn(
-                  "inline-flex items-center gap-0.5 font-mono text-[10px] font-medium",
-                  isUp ? "text-emerald-500" : "text-rose-500"
+                  "inline-flex items-center gap-2 rounded px-2 py-0.5 transition-all hover:bg-muted/50 cursor-pointer shrink-0",
+                  flash === "UP" && "bg-emerald-500/20 text-emerald-400",
+                  flash === "DOWN" && "bg-rose-500/20 text-rose-400",
                 )}
               >
-                {isUp ? <TrendingUp className="h-2.5 w-2.5" /> : <TrendingDown className="h-2.5 w-2.5" />}
-                {isUp ? `+${item.changePips}` : `${item.changePips}`}p
-              </span>
+                <span className="font-mono font-bold text-foreground">
+                  {item.displayName}
+                </span>
 
-              {/* Spread pill */}
-              <span className="text-[9px] font-mono text-muted-foreground/70 bg-muted/40 px-1 py-0.5 rounded border border-border/40">
-                {item.spreadPips}p
-              </span>
-            </Link>
-          );
-        })}
+                {/* Price with flash indicators */}
+                <span className="font-mono text-[11px] text-foreground font-semibold">
+                  {formatPrice(item.price, item.decimals)}
+                </span>
+
+                {/* Pip & Percentage Change */}
+                <span
+                  className={cn(
+                    "inline-flex items-center gap-0.5 font-mono text-[10px] font-medium",
+                    isUp ? "text-emerald-500" : "text-rose-500",
+                  )}
+                >
+                  {isUp ? (
+                    <TrendingUp className="h-2.5 w-2.5" />
+                  ) : (
+                    <TrendingDown className="h-2.5 w-2.5" />
+                  )}
+                  {isUp ? `+${item.changePips}` : `${item.changePips}`}p
+                </span>
+
+                {/* Spread pill */}
+                <span className="text-[9px] font-mono text-muted-foreground/70 bg-muted/40 px-1 py-0.5 rounded border border-border/40">
+                  {item.spreadPips}p
+                </span>
+              </Link>
+            );
+          },
+        )}
       </motion.div>
     </div>
   );
