@@ -79,7 +79,7 @@ export function Header({ email, notifications, events, setups }: HeaderProps) {
             <Search className="h-3.5 w-3.5" />
             <span>Search pairs, actions...</span>
             <kbd className="rounded border border-border bg-background px-1.5 py-0.5 text-[10px] font-mono font-medium">
-              ⌘K
+              Ctrl+K
             </kbd>
           </button>
 

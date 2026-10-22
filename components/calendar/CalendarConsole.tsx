@@ -17,9 +17,10 @@ const FILTER_RULES: Record<ImpactFilter, EventImpact[]> = {
 
 interface CalendarConsoleProps {
   events: EconomicEvent[];
+  available?: boolean;
 }
 
-export function CalendarConsole({ events }: CalendarConsoleProps) {
+export function CalendarConsole({ events, available = true }: CalendarConsoleProps) {
   const now = useNow();
   const [selectedCurrency, setSelectedCurrency] = useState<string>("ALL");
   const [impactFilter, setImpactFilter] = useState<ImpactFilter>("ALL");
@@ -51,6 +52,12 @@ export function CalendarConsole({ events }: CalendarConsoleProps) {
       {/* Macro Metrics Summary Strip */}
       <CalendarMetricsSummary events={events} />
 
+      {!available && (
+        <div className="flex items-center gap-2 rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-2.5 text-xs text-amber-500 font-medium">
+          <span className="h-2 w-2 rounded-full bg-amber-500 animate-pulse" />
+          <span>Macroeconomic feed coverage is stale or currently in demo mode. High-impact news safety buffer is enforced.</span>
+        </div>
+      )}
       {/* Filter & Search Toolbar */}
       <CalendarFilterToolbar
         selectedCurrency={selectedCurrency}

@@ -5,6 +5,7 @@ import { Sparkles, X, Loader2, CheckCircle2, AlertCircle } from "lucide-react";
 import type { SessionType } from "@/types/report";
 import { generateSessionReport } from "@/app/actions/reportActions";
 import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 
 const SESSIONS: { type: SessionType; label: string; desc: string }[] = [
   {
@@ -66,29 +67,29 @@ export function GenerateReportModal() {
         Generate Report
       </Button>
 
-      {isOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-          <div className="relative w-full max-w-lg rounded-xl border border-border bg-card p-6 shadow-xl animate-in fade-in zoom-in-95 duration-150">
-            {/* Header */}
-            <div className="flex items-center justify-between border-b border-border pb-3">
-              <div>
-                <h3 className="text-lg font-bold tracking-tight flex items-center gap-2">
-                  <Sparkles className="h-5 w-5 text-primary" />
-                  Verified Session Briefing
-                </h3>
-                <p className="text-xs text-muted-foreground mt-0.5">
-                  Synthesize live quotes, economic calendars, and open setups
-                  into an executive brief.
-                </p>
-              </div>
-              <button
-                type="button"
-                onClick={() => setIsOpen(false)}
-                className="rounded-md p-1 text-muted-foreground hover:bg-muted hover:text-foreground"
-              >
-                <X className="h-4 w-4" />
-              </button>
+      <Dialog open={isOpen} onOpenChange={(open) => !open && setIsOpen(false)}>
+        <DialogContent showClose={false} className="max-w-lg p-6">
+          <DialogTitle className="sr-only">Session Briefing Generator</DialogTitle>
+          {/* Header */}
+          <div className="flex items-center justify-between border-b border-border pb-3">
+            <div>
+              <h3 className="text-lg font-bold tracking-tight flex items-center gap-2">
+                <Sparkles className="h-5 w-5 text-primary" />
+                Verified Session Briefing
+              </h3>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                Synthesize live quotes, economic calendars, and open setups
+                into an executive brief.
+              </p>
             </div>
+            <button
+              type="button"
+              onClick={() => setIsOpen(false)}
+              className="rounded-md p-1 text-muted-foreground hover:bg-muted hover:text-foreground"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          </div>
 
             {/* Session Selector */}
             <div className="mt-4 space-y-3">
@@ -172,9 +173,8 @@ export function GenerateReportModal() {
                 )}
               </Button>
             </div>
-          </div>
-        </div>
-      )}
+        </DialogContent>
+      </Dialog>
     </>
   );
 }

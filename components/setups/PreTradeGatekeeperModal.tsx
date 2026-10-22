@@ -20,6 +20,7 @@ import {
   evaluatePreTradeAudit,
   type AuditVerdict,
 } from "@/lib/gatekeeperUtils";
+import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
 
 interface PreTradeGatekeeperModalProps {
@@ -69,8 +70,6 @@ export function PreTradeGatekeeperModal({
     );
   }, [setup, auditEvents, auditSetups, settings, now]);
 
-  if (!isOpen) return null;
-
   const isAllAffirmed = affirmedPlan && affirmedStopLoss && affirmedRisk;
   const isBlocked = audit?.overallVerdict === "BLOCKED";
   const canExecute =
@@ -107,15 +106,9 @@ export function PreTradeGatekeeperModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      {/* Backdrop */}
-      <div
-        className="fixed inset-0 bg-background/80 backdrop-blur-sm transition-opacity"
-        onClick={onClose}
-      />
-
-      {/* Modal Dialog */}
-      <div className="relative w-full max-w-lg rounded-xl border border-border bg-card p-5 shadow-2xl space-y-4 animate-in fade-in zoom-in-95 duration-150">
+    <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
+      <DialogContent showClose={false} className="max-w-lg p-5 gap-4">
+        <DialogTitle className="sr-only">Pre-Flight Gatekeeper</DialogTitle>
         {/* Header */}
         <div className="flex items-start justify-between border-b border-border pb-3">
           <div className="flex items-center gap-2.5">
@@ -277,7 +270,7 @@ export function PreTradeGatekeeperModal({
             <span>Save after risk checks</span>
           </button>
         </div>
-      </div>
-    </div>
+      </DialogContent>
+    </Dialog>
   );
 }

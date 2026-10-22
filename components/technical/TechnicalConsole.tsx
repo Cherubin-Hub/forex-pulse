@@ -8,6 +8,7 @@ import type { PriceQuote } from "@/types/market";
 import { calculateConfluenceScore, calculateDailyPivots } from "@/lib/technicalUtils";
 import { PivotLevelsCard } from "@/components/technical/PivotLevelsCard";
 import { TradingViewWidget } from "@/components/charts/TradingViewWidget";
+import { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from "@/components/ui/tooltip";
 import { buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
@@ -61,7 +62,7 @@ export function TechnicalConsole({ technicals, quotes }: TechnicalConsoleProps) 
               <th className="px-5 py-3 font-medium">Instrument</th>
               {TIMEFRAMES.map((tf) => (
                 <th key={tf} className="px-5 py-3 font-medium text-center">
-                  {tf}
+                  {tf} Matrix
                 </th>
               ))}
               <th className="px-5 py-3 font-medium text-right">Overall Bias</th>
@@ -82,7 +83,7 @@ export function TechnicalConsole({ technicals, quotes }: TechnicalConsoleProps) 
                 >
                   <td className="px-5 py-3">
                     <div className="flex items-center gap-2">
-                      <span className="font-bold tracking-tight">{row.symbol}</span>
+                      <span className="font-bold tracking-tight text-foreground">{row.symbol}</span>
                       {isSelected && (
                         <span className="h-1.5 w-1.5 rounded-full bg-primary" />
                       )}
@@ -94,21 +95,60 @@ export function TechnicalConsole({ technicals, quotes }: TechnicalConsoleProps) 
                     const trendColor = getTrendColor(indicator.emaTrend);
 
                     return (
-                      <td key={tf} className="px-5 py-3 text-center">
-                        <div
-                          className={cn(
-                            "inline-flex flex-col items-center justify-center p-1.5 rounded-md border min-w-[70px]",
-                            trendColor
-                          )}
-                        >
-                          <div className="flex items-center gap-1">
-                            <TrendIcon trend={indicator.emaTrend} className="h-3.5 w-3.5" />
-                            <span className="text-[11px] font-bold">{indicator.emaTrend[0]}</span>
-                          </div>
-                          <span className="text-[10px] opacity-75 font-mono">
-                            RSI {indicator.rsi}
-                          </span>
-                        </div>
+                      <td key={tf} className="px-4 py-2.5 text-center">
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger className="bg-transparent border-0 p-0 text-inherit cursor-pointer inline-flex">
+                              <div
+                                className={cn(
+                                  "inline-flex flex-col items-center justify-center p-2 rounded-xl border min-w-[84px] shadow-xs hover:scale-102 transition-transform",
+                                  trendColor
+                                )}
+                              >
+                                <div className="flex items-center gap-1">
+                                  <TrendIcon trend={indicator.emaTrend} className="h-3.5 w-3.5" />
+                                  <span className="text-[11px] font-bold uppercase tracking-tight">{indicator.emaTrend}</span>
+                                </div>
+                                <div className="flex items-center gap-2 text-[10px] font-mono mt-1 opacity-90">
+                                  <span className={cn(
+                                    indicator.rsi >= 70
+                                      ? "text-amber-500 font-bold"
+                                      : indicator.rsi <= 30
+                                      ? "text-emerald-500 font-bold"
+                                      : "text-muted-foreground"
+                                  )}>
+                                    RSI {indicator.rsi.toFixed(0)}
+                                  </span>
+                                  <span className="text-muted-foreground/60">•</span>
+                                  <span className="text-muted-foreground">
+                                    {indicator.macd[0]}
+                                  </span>
+                                </div>
+                              </div>
+                            </TooltipTrigger>
+                            <TooltipContent side="top" className="text-xs space-y-1 p-2.5">
+                              <p className="font-bold border-b border-border/60 pb-1 text-foreground">
+                                {row.symbol} — {tf} Indicators
+                              </p>
+                              <div className="flex justify-between gap-4 text-[11px]">
+                                <span className="text-muted-foreground">EMA Trend:</span>
+                                <span className="font-semibold">{indicator.emaTrend}</span>
+                              </div>
+                              <div className="flex justify-between gap-4 text-[11px]">
+                                <span className="text-muted-foreground">RSI (14):</span>
+                                <span className="font-mono font-semibold">{indicator.rsi.toFixed(1)}</span>
+                              </div>
+                              <div className="flex justify-between gap-4 text-[11px]">
+                                <span className="text-muted-foreground">MACD:</span>
+                                <span className="font-semibold">{indicator.macd}</span>
+                              </div>
+                              <div className="flex justify-between gap-4 text-[11px]">
+                                <span className="text-muted-foreground">ATR Volatility:</span>
+                                <span className="font-mono font-semibold">{indicator.atr.toFixed(4)}</span>
+                              </div>
+                            </TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
                       </td>
                     );
                   })}

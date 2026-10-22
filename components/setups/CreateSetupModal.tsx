@@ -1,4 +1,5 @@
 "use client";
+import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 
 import type { EconomicEvent } from "@/types/calendar";
 import type { TradingSetup } from "@/types/setup";
@@ -149,9 +150,9 @@ export function CreateSetupModal({
         Log New Setup
       </Button>
 
-      {isOpen && !pendingForm && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-          <div className="relative w-full max-w-lg rounded-xl border border-border bg-card p-6 shadow-xl animate-in fade-in zoom-in-95 duration-150">
+      <Dialog open={isOpen && !pendingForm} onOpenChange={(open) => !open && setIsOpen(false)}>
+        <DialogContent showClose={false} className="max-w-lg p-6">
+          <DialogTitle className="sr-only">Log Trading Setup</DialogTitle>
             {/* Header */}
             <div className="flex items-center justify-between border-b border-border pb-3">
               <div>
@@ -343,9 +344,8 @@ export function CreateSetupModal({
                 </Button>
               </div>
             </form>
-          </div>
-        </div>
-      )}
+        </DialogContent>
+      </Dialog>
       {candidate && pendingForm && (
         <PreTradeGatekeeperModal
           setup={candidate}

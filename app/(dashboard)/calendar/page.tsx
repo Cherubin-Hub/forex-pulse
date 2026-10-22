@@ -29,7 +29,7 @@ export default async function CalendarPage() {
           entries are paused.
         </p>
       )}
-      <CalendarConsole events={events} />
+      <CalendarConsole events={events} available={available} />
     </div>
   );
 }

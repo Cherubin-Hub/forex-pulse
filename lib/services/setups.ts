@@ -68,3 +68,40 @@ export async function getHistorySetups(): Promise<TradingSetup[]> {
     return [];
   }
 }
+
+/**
+ * Retrieves paginated historical setups with total count.
+ */
+export async function getHistorySetupsPaged(
+  page = 1,
+  limit = 20,
+): Promise<{ setups: TradingSetup[]; total: number }> {
+  try {
+    const userId = await getAuthenticatedUserId();
+    if (!userId) return { setups: [], total: 0 };
+
+    const supabase = createAdminClient();
+    const from = (page - 1) * limit;
+    const to = from + limit - 1;
+
+    const { data, count, error } = await supabase
+      .from("trading_setups")
+      .select("*", { count: "exact" })
+      .eq("user_id", userId)
+      .in("status", ["TP_REACHED", "SL_HIT", "INVALIDATED", "EXPIRED"])
+      .order("created_at", { ascending: false })
+      .range(from, to);
+
+    if (error || !data) {
+      return { setups: [], total: 0 };
+    }
+
+    return {
+      setups: data.map(mapRowToSetup),
+      total: count ?? data.length,
+    };
+  } catch (err) {
+    console.warn("Paged history query failed:", err);
+    return { setups: [], total: 0 };
+  }
+}

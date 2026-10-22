@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Activity, ChevronsLeft, Layers } from "lucide-react";
 import { SidebarNav } from "@/components/layout/SidebarNav";
@@ -9,10 +9,36 @@ import { gatewayBaseUrl } from "@/lib/redirects";
 
 const EXPANDED_WIDTH = 248;
 const COLLAPSED_WIDTH = 72;
+const STORAGE_KEY = "fp_sidebar_collapsed";
 
 export function Sidebar() {
   const [isCollapsed, setIsCollapsed] = useState(false);
   const gatewayUrl = gatewayBaseUrl();
+
+  // Strict Hydration Safety Pattern for browser storage
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem(STORAGE_KEY);
+      if (saved !== null) {
+        // eslint-disable-next-line react-hooks/set-state-in-effect -- Hydration match pattern
+        setIsCollapsed(saved === "true");
+      }
+    } catch {
+      // Graceful fallback if localStorage is unavailable
+    }
+  }, []);
+
+  const toggleCollapse = () => {
+    setIsCollapsed((prev) => {
+      const next = !prev;
+      try {
+        localStorage.setItem(STORAGE_KEY, String(next));
+      } catch {
+        // Graceful fallback
+      }
+      return next;
+    });
+  };
 
   return (
     <motion.aside
@@ -61,7 +87,7 @@ export function Sidebar() {
       {/* Collapse button */}
       <div className="border-t border-border p-3">
         <button
-          onClick={() => setIsCollapsed((prev) => !prev)}
+          onClick={toggleCollapse}
           className="flex h-9 w-full items-center gap-3 rounded-md px-3 text-sm text-muted-foreground transition-colors hover:bg-sidebar-accent hover:text-foreground"
         >
           <ChevronsLeft

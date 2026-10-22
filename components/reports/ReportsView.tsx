@@ -3,6 +3,7 @@
 import { useState } from "react";
 import type { SessionReport } from "@/types/report";
 import { ReportCard } from "@/components/reports/ReportCard";
+import { formatDayLabelPHT } from "@/lib/formatters";
 import { Button } from "@/components/ui/button";
 
 export function ReportsView({ reports }: { reports: SessionReport[] }) {
@@ -29,7 +30,7 @@ export function ReportsView({ reports }: { reports: SessionReport[] }) {
             >
               {report.session.replace("_", " ")}
               <span className="ml-1.5 opacity-60 text-[10px]">
-                ({new Date(report.timestamp).toLocaleDateString("en-US", { month: "short", day: "numeric" })})
+                ({formatDayLabelPHT(report.timestamp)})
               </span>
             </Button>
           );

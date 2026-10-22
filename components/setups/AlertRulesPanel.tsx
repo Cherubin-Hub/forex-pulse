@@ -7,6 +7,12 @@ import type { PriceAlert, AlertCondition, AlertAction } from "@/types/alert";
 import type { TradingSetup } from "@/types/setup";
 import { getSavedAlerts, saveAlerts } from "@/lib/services/alertEngine";
 import {
+  getUserPriceAlertsAction,
+  savePriceAlertAction,
+  deletePriceAlertAction,
+  syncPriceAlertsAction,
+} from "@/app/actions/alertActions";
+import {
   Card,
   CardHeader,
   CardTitle,
@@ -31,8 +37,22 @@ export function AlertRulesPanel({ setups }: AlertRulesPanelProps) {
   const [action, setAction] = useState<AlertAction>("NOTIFY");
 
   useEffect(() => {
+    const local = getSavedAlerts(identity?.userId);
     // eslint-disable-next-line react-hooks/set-state-in-effect -- Hydration match pattern
-    setAlerts(getSavedAlerts(identity?.userId));
+    setAlerts(local);
+
+    if (identity?.userId) {
+      getUserPriceAlertsAction().then((cloudAlerts) => {
+        if (cloudAlerts && cloudAlerts.length > 0) {
+          setAlerts(cloudAlerts);
+          saveAlerts(cloudAlerts, identity.userId);
+        } else if (local.length > 0) {
+          syncPriceAlertsAction(local);
+        }
+      }).catch((err) => {
+        console.warn("[AlertRulesPanel] Cloud fetch fallback:", err);
+      });
+    }
   }, [identity?.userId]);
 
   const handleAddAlert = (e: React.FormEvent) => {
@@ -56,6 +76,11 @@ export function AlertRulesPanel({ setups }: AlertRulesPanelProps) {
     const nextList = [newAlert, ...alerts];
     setAlerts(nextList);
     saveAlerts(nextList, identity?.userId);
+    if (identity?.userId) {
+      savePriceAlertAction(newAlert).catch((err) => {
+        console.warn("[AlertRulesPanel] Cloud save notice:", err);
+      });
+    }
     setTargetPrice("");
     setIsOpenForm(false);
   };
@@ -64,6 +89,11 @@ export function AlertRulesPanel({ setups }: AlertRulesPanelProps) {
     const nextList = alerts.filter((a) => a.id !== id);
     setAlerts(nextList);
     saveAlerts(nextList, identity?.userId);
+    if (identity?.userId) {
+      deletePriceAlertAction(id).catch((err) => {
+        console.warn("[AlertRulesPanel] Cloud delete notice:", err);
+      });
+    }
   };
 
   return (

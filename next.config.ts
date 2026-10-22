@@ -1,6 +1,25 @@
 import type { NextConfig } from "next";
 
+const cspHeader = `
+  default-src 'self';
+  script-src 'self' 'unsafe-eval' 'unsafe-inline' https://s.tradingview.com https://www.tradingview.com;
+  style-src 'self' 'unsafe-inline';
+  img-src 'self' blob: data: https:;
+  font-src 'self' data:;
+  frame-src 'self' https://s.tradingview.com https://www.tradingview.com;
+  connect-src 'self' https://*.supabase.co wss://*.supabase.co https://query1.finance.yahoo.com https://finnhub.io;
+  object-src 'none';
+  base-uri 'self';
+  form-action 'self';
+`
+  .replace(/\s{2,}/g, " ")
+  .trim();
+
 const securityHeaders = [
+  {
+    key: "Content-Security-Policy",
+    value: cspHeader,
+  },
   {
     key: "X-DNS-Prefetch-Control",
     value: "on",
@@ -12,6 +31,10 @@ const securityHeaders = [
   {
     key: "X-Content-Type-Options",
     value: "nosniff",
+  },
+  {
+    key: "X-Frame-Options",
+    value: "SAMEORIGIN",
   },
   {
     key: "Referrer-Policy",

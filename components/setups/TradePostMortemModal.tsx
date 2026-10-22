@@ -17,6 +17,8 @@ import {
   savePostMortem,
 } from "@/lib/postMortemUtils";
 import { cn } from "@/lib/utils";
+import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
+import { saveTradePostMortemAction } from "@/app/actions/postMortemActions";
 
 interface TradePostMortemModalProps {
   setup: TradingSetup;
@@ -155,20 +157,17 @@ export function TradePostMortemModal({
     };
 
     savePostMortem(postMortem, identity?.userId);
+    saveTradePostMortemAction(postMortem).catch((err) => {
+      console.warn("[TradePostMortem] Cloud sync notice:", err);
+    });
     onSave?.(postMortem);
     onClose();
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      {/* Backdrop */}
-      <div
-        className="fixed inset-0 bg-background/80 backdrop-blur-sm transition-opacity"
-        onClick={onClose}
-      />
-
-      {/* Modal Dialog */}
-      <div className="relative w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-xl border border-border bg-card p-5 shadow-2xl space-y-4 animate-in fade-in zoom-in-95 duration-150">
+    <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
+      <DialogContent showClose={false} className="max-w-2xl max-h-[90vh] overflow-y-auto p-5 space-y-4">
+        <DialogTitle className="sr-only">Trade Post-Mortem & Execution Review</DialogTitle>
         {/* Header */}
         <div className="flex items-start justify-between border-b border-border pb-3">
           <div className="flex items-center gap-2.5">
@@ -410,7 +409,7 @@ export function TradePostMortemModal({
             <span>Save Post-Mortem</span>
           </button>
         </div>
-      </div>
-    </div>
+      </DialogContent>
+    </Dialog>
   );
 }

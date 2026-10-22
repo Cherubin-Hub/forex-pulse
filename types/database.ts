@@ -5,6 +5,8 @@ import type { NewsImpact } from "./news";
 import type { DataStatus } from "./market";
 import type { TrendDirection } from "./technical";
 import type { NotificationType, NotificationPriority } from "./notification";
+import type { ExecutionGrade, PsychologicalState, MistakeCategory } from "@/lib/postMortemUtils";
+import type { AlertCondition, AlertAction, AlertStatus } from "./alert";
 
 export type Json =
   | string
@@ -302,6 +304,74 @@ export interface Database {
         };
         Update: Partial<
           Database["public"]["Tables"]["technical_analysis"]["Insert"]
+        >;
+        Relationships: [];
+      };
+      trade_post_mortems: {
+        Row: {
+          id: string;
+          setup_id: string;
+          user_id: string;
+          grade: ExecutionGrade;
+          psychological_state: PsychologicalState;
+          mistake_category: MistakeCategory;
+          rules_followed: Json;
+          discipline_score: number;
+          retrospective_notes: string;
+          reviewed_at: string;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          setup_id: string;
+          user_id: string;
+          grade: ExecutionGrade;
+          psychological_state: PsychologicalState;
+          mistake_category: MistakeCategory;
+          rules_followed: Json;
+          discipline_score: number;
+          retrospective_notes?: string;
+          reviewed_at?: string;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: Partial<
+          Database["public"]["Tables"]["trade_post_mortems"]["Insert"]
+        >;
+        Relationships: [];
+      };
+      price_alerts: {
+        Row: {
+          id: string;
+          user_id: string;
+          setup_id: string | null;
+          symbol: string;
+          condition: AlertCondition;
+          target_price: number;
+          proximity_pips: number | null;
+          action: AlertAction;
+          status: AlertStatus;
+          message: string;
+          created_at: string;
+          fired_at: string | null;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          setup_id?: string | null;
+          symbol: string;
+          condition: AlertCondition;
+          target_price: number;
+          proximity_pips?: number | null;
+          action: AlertAction;
+          status?: AlertStatus;
+          message?: string;
+          created_at?: string;
+          fired_at?: string | null;
+        };
+        Update: Partial<
+          Database["public"]["Tables"]["price_alerts"]["Insert"]
         >;
         Relationships: [];
       };

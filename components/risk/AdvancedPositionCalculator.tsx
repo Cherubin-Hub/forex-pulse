@@ -10,6 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { INSTRUMENTS } from "@/lib/constants/instruments";
+import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
 import { calculatePositionSize, type CalculationMode } from "@/lib/riskUtils";
 
 export function AdvancedPositionCalculator() {
@@ -145,17 +146,18 @@ export function AdvancedPositionCalculator() {
           {/* Instrument Selector */}
           <div className="space-y-2">
             <Label className="text-xs">Instrument / Asset</Label>
-            <select
-              value={pair}
-              onChange={(e) => setPair(e.target.value)}
-              className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-1 focus:ring-ring"
-            >
-              {INSTRUMENTS.map((inst) => (
-                <option key={inst.symbol} value={inst.symbol}>
-                  {inst.displayName} ({inst.category})
-                </option>
-              ))}
-            </select>
+            <Select value={pair} onValueChange={(val: string | null) => val && setPair(val)}>
+              <SelectTrigger className="w-full font-mono text-xs">
+                <SelectValue placeholder="Select instrument" />
+              </SelectTrigger>
+              <SelectContent>
+                {INSTRUMENTS.map((inst) => (
+                  <SelectItem key={inst.symbol} value={inst.symbol}>
+                    {inst.displayName} ({inst.category})
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
 
           {/* Sizing Mode Inputs */}

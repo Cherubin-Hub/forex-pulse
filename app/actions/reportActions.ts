@@ -12,6 +12,7 @@ import { calculateDailyPivots } from "@/lib/technicalUtils";
 import { formatDayKeyPHT, formatPercent } from "@/lib/formatters";
 import { getCurrentSessionWindow, getSessionWindow } from "@/lib/reportUtils";
 import { sessionTypeSchema } from "@/lib/schemas/report";
+import { generateGeminiSessionBriefing } from "@/lib/services/gemini";
 import type {
   SessionType,
   MarketBias,
@@ -75,26 +76,64 @@ export async function generateSessionReport(
         : [];
     });
     const windowStart = getSessionWindow(session);
+    const highEvents = events.filter((event) => event.impact === "HIGH");
+    const riskRuleText = `Maximum ${formatPercent(settings.riskPerTradePercent)} per setup; minimum ${settings.minRiskReward}R; daily loss limit ${settings.maxDailyLossR}R.`;
+
+    // Institutional AI Synthesis with Google Gemini Flash (Free Tier)
+    const aiBriefing = await generateGeminiSessionBriefing({
+      session,
+      verifiedQuotes: verified.map((q) => ({
+        symbol: q.symbol,
+        price: q.price,
+        previousClose: q.previousClose,
+        bias: q.bias,
+      })),
+      calendarEvents: highEvents.map((e) => ({
+        title: e.title,
+        currency: e.currency,
+        impact: e.impact,
+        scheduledAt: e.scheduledAt,
+      })),
+      activeSetups: setups.map((s) => ({
+        symbol: s.symbol,
+        direction: s.direction,
+        confluences: s.confluenceTags,
+      })),
+      riskRules: riskRuleText,
+    });
+
+    const finalBias = aiBriefing?.bias ?? bias;
+    const finalVolatility = aiBriefing?.volatility ?? volatility;
+    const finalExecutiveSummary =
+      aiBriefing?.executiveSummary ??
+      `Snapshot from ${verified.length} verified instruments. ${highCount} high-impact events scheduled today in Manila time. This briefing summarizes available data; it does not confirm broker executions.`;
+    const focusPairs =
+      aiBriefing?.focusPairs && aiBriefing.focusPairs.length > 0
+        ? aiBriefing.focusPairs
+        : [...new Set(setups.map((setup) => setup.symbol))];
+    const tradeOpportunities =
+      aiBriefing?.tradeOpportunities && aiBriefing.tradeOpportunities.length > 0
+        ? aiBriefing.tradeOpportunities
+        : setups.map(
+            (setup) =>
+              `${setup.symbol} ${setup.direction}: ${setup.confluenceTags.join(", ")}`,
+          );
+
     const payload = {
       owner_id: userId,
       session_window: windowStart.toISOString(),
       session,
-      title: `${session.replaceAll("_", " ")}: Verified market briefing`,
-      bias,
-      volatility,
-      executive_summary: `Snapshot from ${verified.length} verified instruments. ${highCount} high-impact events scheduled today in Manila time. This briefing summarizes available data; it does not confirm broker executions.`,
-      macro_catalysts: events
-        .filter((event) => event.impact === "HIGH")
-        .map((event) => `${event.currency}: ${event.title}`),
+      title: `${session.replaceAll("_", " ")}: ${aiBriefing ? "AI synthesized briefing" : "Verified market briefing"}`,
+      bias: finalBias,
+      volatility: finalVolatility,
+      executive_summary: finalExecutiveSummary,
+      macro_catalysts: highEvents.map((event) => `${event.currency}: ${event.title}`),
       key_levels: keyLevels as unknown as Json,
       playbook: {
         userId,
-        focusPairs: [...new Set(setups.map((setup) => setup.symbol))],
-        riskRule: `Maximum ${formatPercent(settings.riskPerTradePercent)} per setup; minimum ${settings.minRiskReward}R; daily loss limit ${settings.maxDailyLossR}R.`,
-        tradeOpportunities: setups.map(
-          (setup) =>
-            `${setup.symbol} ${setup.direction}: ${setup.confluenceTags.join(", ")}`,
-        ),
+        focusPairs,
+        riskRule: riskRuleText,
+        tradeOpportunities,
       } as Json,
     };
     const admin = createAdminClient();

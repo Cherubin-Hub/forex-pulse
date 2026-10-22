@@ -10,6 +10,8 @@ import type {
   IndicatorData,
 } from "@/types/technical";
 import type { SystemNotification } from "@/types/notification";
+import type { TradePostMortem } from "@/lib/postMortemUtils";
+import type { PriceAlert } from "@/types/alert";
 
 type SetupRow = Database["public"]["Tables"]["trading_setups"]["Row"];
 type ReportRow = Database["public"]["Tables"]["session_reports"]["Row"];
@@ -20,6 +22,8 @@ type GoldKeyLevelRow = Database["public"]["Tables"]["gold_key_levels"]["Row"];
 type TechnicalAnalysisRow =
   Database["public"]["Tables"]["technical_analysis"]["Row"];
 type NotificationRow = Database["public"]["Tables"]["notifications"]["Row"];
+type PostMortemRow = Database["public"]["Tables"]["trade_post_mortems"]["Row"];
+type PriceAlertRow = Database["public"]["Tables"]["price_alerts"]["Row"];
 
 /**
  * Maps a Supabase snake_case setup row to our application's TradingSetup model.
@@ -162,5 +166,46 @@ export function mapRowToNotification(row: NotificationRow): SystemNotification {
     actionLabel: row.action_label ?? undefined,
     read: row.read,
     timestamp: row.created_at,
+  };
+}
+
+/**
+ * Maps a Supabase snake_case post-mortem row to our application's TradePostMortem model.
+ */
+export function mapRowToPostMortem(row: PostMortemRow): TradePostMortem {
+  return {
+    setupId: row.setup_id,
+    grade: row.grade,
+    psychology: row.psychological_state,
+    mistake: row.mistake_category,
+    rulesFollowed: (row.rules_followed as unknown as TradePostMortem["rulesFollowed"]) ?? {
+      planFollowed: true,
+      riskManaged: true,
+      stopHonored: true,
+      targetPatient: true,
+    },
+    disciplineScore: row.discipline_score,
+    retrospectiveNotes: row.retrospective_notes,
+    reviewedAt: row.reviewed_at,
+  };
+}
+
+/**
+ * Maps a Supabase snake_case price alert row to our application's PriceAlert model.
+ */
+export function mapRowToPriceAlert(row: PriceAlertRow): PriceAlert {
+  return {
+    id: row.id,
+    setupId: row.setup_id,
+    symbol: row.symbol,
+    condition: row.condition,
+    targetPrice: Number(row.target_price),
+    proximityPips:
+      row.proximity_pips !== null ? Number(row.proximity_pips) : undefined,
+    action: row.action,
+    status: row.status,
+    message: row.message,
+    createdAt: row.created_at,
+    firedAt: row.fired_at,
   };
 }

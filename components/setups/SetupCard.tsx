@@ -98,7 +98,12 @@ export function SetupCard({ setup, quote }: { setup: TradingSetup; quote?: Price
           </div>
 
           {/* Price Levels Grid */}
-          <div className="mt-4 grid grid-cols-3 gap-2 rounded-lg bg-muted/40 p-3 text-sm">
+          <div
+            className={cn(
+              "mt-4 grid gap-2 rounded-lg bg-muted/40 p-3 text-sm",
+              setup.takeProfit2 ? "grid-cols-4" : "grid-cols-3"
+            )}
+          >
             <div>
               <p className="text-xs text-muted-foreground">Entry Zone</p>
               <p className="font-medium financial-num text-foreground">{formatPrice(setup.entryMin, decimals)}</p>
@@ -112,6 +117,14 @@ export function SetupCard({ setup, quote }: { setup: TradingSetup; quote?: Price
               <p className="text-xs text-muted-foreground">Take Profit 1</p>
               <p className="font-medium financial-num text-emerald-500">{formatPrice(setup.takeProfit1, decimals)}</p>
             </div>
+            {setup.takeProfit2 !== null && setup.takeProfit2 !== undefined && (
+              <div className="border-l border-border pl-2">
+                <p className="text-xs text-muted-foreground">Take Profit 2</p>
+                <p className="font-medium financial-num text-emerald-600 dark:text-emerald-400">
+                  {formatPrice(setup.takeProfit2, decimals)}
+                </p>
+              </div>
+            )}
           </div>
 
           {/* Real-time Progress Gauge */}

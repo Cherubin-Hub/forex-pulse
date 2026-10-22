@@ -12,6 +12,9 @@ import { isVerifiedQuote, isDemoMode } from "@/lib/marketQuality";
 import { isForexMarketOpen } from "@/lib/sessions";
 import type { HeadlessCycleResult } from "@/types/action";
 export type { HeadlessCycleResult } from "@/types/action";
+
+const MAX_PENDING_HOURS = 24;
+
 export async function executeHeadlessAutomationCycle(
   onlyUserId?: string,
 ): Promise<HeadlessCycleResult> {
@@ -53,12 +56,41 @@ export async function executeHeadlessAutomationCycle(
       result.activeUsersCount++;
       const { data: rows, error: readError } = await admin
         .from("trading_setups")
-        .select("id,symbol")
+        .select("id,symbol,created_at,status")
         .eq("user_id", user.user_id)
         .in("status", ["WAITING_FOR_CONFIRMATION", "ENTRY_TRIGGERED"]);
       if (readError) throw new Error("Portfolio query failed.");
       for (const row of rows ?? []) {
         try {
+          // Automated Expiry Sweep: Expire pending setups older than 24h
+          if (
+            row.status === "WAITING_FOR_CONFIRMATION" &&
+            Date.now() - Date.parse(row.created_at) > MAX_PENDING_HOURS * 3600000
+          ) {
+            await admin
+              .from("trading_setups")
+              .update({
+                status: "EXPIRED",
+                updated_at: new Date().toISOString(),
+              })
+              .eq("id", row.id)
+              .eq("user_id", user.user_id)
+              .eq("status", "WAITING_FOR_CONFIRMATION");
+
+            await admin.from("notifications").insert({
+              user_id: user.user_id,
+              type: "SETUP_STATUS",
+              priority: "INFO",
+              title: `${row.symbol}: EXPIRED`,
+              message: `Pending trade automatically expired after ${MAX_PENDING_HOURS}h without entry trigger.`,
+              symbol: row.symbol,
+              link_href: "/setups/history",
+            });
+
+            result.setupsUpdated++;
+            continue;
+          }
+
           if (await resolveSetupForUser(user.user_id, row.id))
             result.setupsUpdated++;
         } catch (error: unknown) {

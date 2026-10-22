@@ -18,6 +18,10 @@ import { DisciplineEdgeMatrix } from "@/components/setups/DisciplineEdgeMatrix";
 import { SetupGrid } from "@/components/setups/SetupGrid";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import {
+  getPostMortemsAction,
+  syncPostMortemsAction,
+} from "@/app/actions/postMortemActions";
 
 type FilterStatus = "ALL" | "TP_REACHED" | "SL_HIT" | "INVALIDATED";
 
@@ -36,11 +40,25 @@ export function SetupHistoryView({
   );
   const [searchQuery, setSearchQuery] = useState("");
   const [reviews, setReviews] = useState<Record<string, TradePostMortem>>({});
+  const [visibleCount, setVisibleCount] = useState<number>(12);
 
-  // Sync post-mortems from localStorage with hydration safety
+  // Sync post-mortems from localStorage & cloud with hydration safety
   useEffect(() => {
+    const local = loadAllPostMortems(identity?.userId);
     // eslint-disable-next-line react-hooks/set-state-in-effect -- Hydration match pattern
-    setReviews(loadAllPostMortems(identity?.userId));
+    setReviews(local);
+
+    if (identity?.userId) {
+      getPostMortemsAction(identity.userId).then((cloud) => {
+        if (cloud && Object.keys(cloud).length > 0) {
+          setReviews(cloud);
+        } else if (Object.keys(local).length > 0) {
+          syncPostMortemsAction(identity.userId);
+        }
+      }).catch((err) => {
+        console.warn("[SetupHistory] Cloud reviews sync notice:", err);
+      });
+    }
   }, [identity?.userId]);
 
   // Filtered setups based on active status, direction, grade, and keyword search
@@ -220,8 +238,35 @@ export function SetupHistoryView({
         </div>
       </div>
 
-      {/* Setup Cards Grid */}
-      <SetupGrid setups={filteredSetups} />
+      {/* Setup Cards Grid with Pagination */}
+      <SetupGrid setups={filteredSetups.slice(0, visibleCount)} />
+
+      {filteredSetups.length > visibleCount && (
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-4 border-t border-border">
+          <p className="text-xs text-muted-foreground">
+            Showing <span className="font-semibold text-foreground">{visibleCount}</span> of{" "}
+            <span className="font-semibold text-foreground">{filteredSetups.length}</span> setups
+          </p>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              className="text-xs h-8"
+              onClick={() => setVisibleCount((prev) => Math.min(prev + 12, filteredSetups.length))}
+            >
+              Load More ({filteredSetups.length - visibleCount} remaining)
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="text-xs h-8 text-muted-foreground hover:text-foreground"
+              onClick={() => setVisibleCount(filteredSetups.length)}
+            >
+              Show All
+            </Button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
